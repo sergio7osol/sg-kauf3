@@ -11,15 +11,15 @@ export default defineNuxtConfig({
     enabled: true
   },
 
-  css: ['~/assets/css/main.css'],
-
-  modules: [
+    modules: [
     '@nuxt/eslint',
     '@nuxt/ui',
     '@vueuse/nuxt'
   ],
+
+  css: ['~/assets/css/main.css'],
   
-  runtimeConfig: {
+  runtimeConfig: {  
     public: {
       apiBase: 'http://localhost',
       appURL: 'http://localhost:3000',
