@@ -5,7 +5,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 
   const config = useRuntimeConfig();
 
-  axios.defaults.baseURL = config.public.apiBase;
+  axios.defaults.baseURL = `${config.public.apiBase}/api`;
   axios.defaults.headers.common["X-Requested-With"] = "XMLHttpRequest";
   axios.defaults.headers.common["Content-Type"] = "application/json";
   axios.defaults.headers.common["Accept"] = "application/json";
@@ -14,5 +14,11 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   axios.defaults.xsrfCookieName = 'XSRF-TOKEN';
   axios.defaults.xsrfHeaderName = 'X-XSRF-TOKEN';
 
-  await axios.get("/sanctum/csrf-cookie");
+  try {
+    await axios.get("/sanctum/csrf-cookie", {
+      baseURL: config.public.apiBase
+    });
+  } catch (error) {
+    console.error('Failed to fetch CSRF cookie:', error);
+  }
 });

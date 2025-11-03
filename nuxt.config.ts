@@ -4,22 +4,26 @@ export default defineNuxtConfig({
 
   devServer: {
     host: '0.0.0.0',
-    port: 3000
+    port: 3000,
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+    }
   },
 
   devtools: {
     enabled: true
   },
 
-    modules: [
+  css: ['~/assets/css/main.css'],
+
+  modules: [
     '@nuxt/eslint',
     '@nuxt/ui',
     '@vueuse/nuxt'
   ],
-
-  css: ['~/assets/css/main.css'],
   
-  runtimeConfig: {  
+  runtimeConfig: {
     public: {
       apiBase: 'http://localhost',
       appURL: 'http://localhost:3000',

@@ -6,9 +6,8 @@ definePageMeta({
   layout: 'plain'
 })
 
-// Add a handler function in the script section
 async function register(event: FormSubmitEvent) {
-  const res = await axios.post("/api/register", event.data);
+  const res = await axios.post("/register", event.data);
   console.log(res);
 }
 
