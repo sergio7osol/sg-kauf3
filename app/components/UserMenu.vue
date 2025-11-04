@@ -7,15 +7,22 @@ defineProps<{
 
 const colorMode = useColorMode()
 const appConfig = useAppConfig()
+const { user: loggedInUser, fetchUser } = useUser()
 
 const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
 const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
 
-const user = ref({
-  name: 'Benjamin Canac',
+const user = computed(() => loggedInUser.value || {
+  name: 'Guest',
   avatar: {
-    src: 'https://github.com/benjamincanac.png',
-    alt: 'Benjamin Canac'
+    src: 'https://github.com/nuxt.png',
+    alt: 'Guest'
+  }
+})
+
+onMounted(() => {
+  if (!loggedInUser.value) {
+    fetchUser()
   }
 })
 
@@ -25,7 +32,8 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   avatar: user.value.avatar
 }], [{
   label: 'Profile',
-  icon: 'i-lucide-user'
+  icon: 'i-lucide-user',
+  to: '/me'
 }, {
   label: 'Billing',
   icon: 'i-lucide-credit-card'
@@ -147,7 +155,8 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   target: '_blank'
 }, {
   label: 'Log out',
-  icon: 'i-lucide-log-out'
+  icon: 'i-lucide-log-out',
+  to: '/logout'
 }]]))
 </script>
 
