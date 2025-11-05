@@ -3,12 +3,18 @@ import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
 import axios from "axios"
 
 definePageMeta({
-  layout: 'plain'
+  layout: 'plain',
+  middleware: 'guest'
 })
 
 async function register(event: FormSubmitEvent) {
-  const res = await axios.post("/register", event.data);
-  console.log(res);
+  await axios.post("/register", event.data);
+  await axios.post('/login', {
+    email: event.data.email,
+    password: event.data.password
+  });
+  
+  useRouter().push('/me');
 }
 
 const fields = ref<AuthFormField[]>([
