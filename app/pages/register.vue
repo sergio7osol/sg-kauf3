@@ -1,20 +1,15 @@
 <script setup lang="ts">
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
-import axios from "axios"
 
 definePageMeta({
   layout: 'plain',
   middleware: 'guest'
 })
 
-async function register(event: FormSubmitEvent) {
-  await axios.post("/register", event.data);
-  await axios.post('/login', {
-    email: event.data.email,
-    password: event.data.password
-  });
-  
-  useRouter().push('/me');
+const { register } = useAuth();
+
+async function registerUser(event: FormSubmitEvent) {
+  await register(event.data);
 }
 
 const fields = ref<AuthFormField[]>([
@@ -56,7 +51,7 @@ const fields = ref<AuthFormField[]>([
           icon="i-lucide-user"
           :fields="fields"
           class="max-w-md"
-          @submit.prevent="register"
+          @submit.prevent="registerUser"
         />
       </div>
     </template>

@@ -3,11 +3,8 @@ definePageMeta({
   middleware: ['auth']
 })
 
-const { user, fetchUser } = useUser()
+const { user } = useAuth();
 
-onMounted(() => {
-  fetchUser()
-})
 </script>
 
 <template>

@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
-import axios from "axios"
+import type { LoginCredentials } from '~/composables/useAuth'
 
 definePageMeta({
   layout: 'plain',
   middleware: 'guest'
 })
 
-async function login(event: FormSubmitEvent) {
-  await axios.post('/login', event.data);
-  
-  useRouter().push('/me');
+const { login: authLogin } = useAuth();
+
+async function handleLogin(event: FormSubmitEvent<LoginCredentials>) {
+  try {
+    await authLogin(event.data);
+  } catch (error) {
+    // TODO: Show error message e.g. as a toast
+    console.error('Login failed:', error);
+  }
 }
 
 const fields = ref<AuthFormField[]>([
@@ -40,7 +45,7 @@ const fields = ref<AuthFormField[]>([
           icon="i-lucide-lock"
           :fields="fields"
           class="max-w-md"
-          @submit.prevent="login"
+          @submit.prevent="handleLogin"
         />
       </div>
     </template>

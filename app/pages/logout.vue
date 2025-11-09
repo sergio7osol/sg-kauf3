@@ -1,8 +1,7 @@
 <script setup>
-import axios from "axios"
+const { logout } = useAuth();
 
-await axios.post("/logout");
-useRouter().replace("/login");
+await logout();
 </script>
 
 <template>
