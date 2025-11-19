@@ -25,6 +25,13 @@ const links = [[{
     open.value = false
   }
 }, {
+  label: 'Session Check',
+  icon: 'i-lucide-car',
+  to: '/session-check',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
   label: 'Customers',
   icon: 'i-lucide-users',
   to: '/customers',
