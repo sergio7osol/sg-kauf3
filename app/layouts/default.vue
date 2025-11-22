@@ -25,6 +25,13 @@ const links = [[{
     open.value = false
   }
 }, {
+  label: 'Shops',
+  icon: 'i-lucide-shopping-cart',
+  to: '/shops',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
   label: 'Session Check',
   icon: 'i-lucide-car',
   to: '/session-check',

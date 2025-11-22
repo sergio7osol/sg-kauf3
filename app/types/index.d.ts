@@ -58,3 +58,30 @@ export interface Range {
   start: Date
   end: Date
 }
+
+export type ShopType = 'in_store' | 'online' | 'hybrid'
+export type CountryCode = 'Germany' | 'Russia'
+
+export interface ShopAddress {
+  id: number
+  shopId: number
+  country: CountryCode
+  postalCode: string
+  city: string
+  street: string
+  houseNumber: string
+  isPrimary: boolean
+  displayOrder: number
+  isActive: boolean
+}
+
+export interface Shop {
+  id: number
+  name: string
+  slug: string
+  type: ShopType
+  country: CountryCode
+  displayOrder: number
+  isActive: boolean
+  addresses?: ShopAddress[]
+}
