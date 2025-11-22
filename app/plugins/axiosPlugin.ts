@@ -5,6 +5,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   if (import.meta.server) return;
 
   const config = useRuntimeConfig();
+  let isLoggingOut = false;
 
   axios.defaults.baseURL = `${config.public.apiBase}/api`;
   axios.defaults.headers.common["X-Requested-With"] = "XMLHttpRequest";
@@ -18,9 +19,17 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   axios.interceptors.response.use(
     (response: AxiosResponse) => response,
     (error: AxiosError) => {
-      if ([401, 419].includes(error.response?.status) && !error.request?.responseURL?.endsWith("/api/user")) {
+      const status = error.response?.status;
+      const url = error.request?.responseURL;
+      
+      // Prevent logout loop - only logout once
+      if ([401, 419].includes(status) && !url?.endsWith("/api/user") && !url?.endsWith("/api/logout") && !isLoggingOut) {
+        isLoggingOut = true;
+        console.error('Authentication error detected:', status, 'on', url);
         const { logout } = useAuth();
-        logout();
+        logout().finally(() => {
+          isLoggingOut = false;
+        });
       }
       return Promise.reject(error);
     }
