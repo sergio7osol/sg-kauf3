@@ -54,9 +54,12 @@ export const useAuth = () => {
 
   async function login(credentials: LoginCredentials) {
     try {
-      console.log('login');
       const response = await axios.post<User>('/login', credentials);
-      await router.push('/me');
+      if (import.meta.client && window.history.length > 1) {
+        router.back();
+      } else {
+        await router.push('/me');
+      }
     } catch (error) {
       throw error;
     }
