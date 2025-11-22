@@ -14,6 +14,7 @@ const { user } = useAuth();
 const UBadge = resolveComponent('UBadge');
 const UButton = resolveComponent('UButton');
 const UDropdownMenu = resolveComponent('UDropdownMenu');
+const UIcon = resolveComponent('UIcon');
 const table = useTemplateRef('table');
 
 const selectedRow = ref<TableRow<Shop> | null>(null);
@@ -123,6 +124,24 @@ const columns: TableColumn<Shop>[] = [
     header: 'Addresses',
     cell: ({ row }: any) => {
       return h('div', { class: 'text-right text-gray-500' }, row.original.addresses?.length ?? 0)
+    }
+  },
+  {
+    id: 'actions',
+    header: '',
+    enableHiding: false,
+    cell: ({ row }: any) => {
+      const hasAddresses = row.original.addresses && row.original.addresses.length > 0
+      if (!hasAddresses) return null
+      
+      return h(UButton, {
+        icon: row.getIsExpanded() ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down',
+        color: 'neutral',
+        variant: 'ghost',
+        size: 'xs',
+        onClick: () => row.toggleExpanded(),
+        'aria-label': row.getIsExpanded() ? 'Collapse addresses' : 'Expand addresses'
+      })
     }
   }
 ];
@@ -242,7 +261,60 @@ function handleShopCreated() {
                   :columns="columns"
                   :loading="isLoading"
                   @hover="onHover"
-                />
+                >
+                  <template #expanded="{ row }">
+                    <div class="p-4 bg-gray-50/50">
+                      <div class="text-sm font-medium text-gray-700 mb-3">Addresses for {{ row.original.name }}</div>
+                      <div class="space-y-2">
+                        <div
+                          v-for="address in row.original.addresses"
+                          :key="address.id"
+                          class="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-200"
+                        >
+                          <div class="flex-shrink-0 mt-0.5">
+                            <UBadge 
+                              v-if="address.isPrimary" 
+                              color="primary" 
+                              variant="soft"
+                              size="xs"
+                            >
+                              Primary
+                            </UBadge>
+                            <UBadge 
+                              v-else 
+                              color="gray" 
+                              variant="soft"
+                              size="xs"
+                            >
+                              {{ address.displayOrder }}
+                            </UBadge>
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                              <UIcon name="i-lucide-map-pin" class="w-4 h-4 text-gray-400" />
+                              <span class="font-medium text-gray-900">
+                                {{ address.street }} {{ address.houseNumber }}
+                              </span>
+                            </div>
+                            <div class="flex items-center gap-2 mt-1 text-sm text-gray-600">
+                              <UIcon name="i-lucide-map" class="w-3.5 h-3.5 text-gray-400" />
+                              <span>{{ address.postalCode }} {{ address.city }}, {{ address.country }}</span>
+                            </div>
+                          </div>
+                          <div class="flex-shrink-0">
+                            <UBadge 
+                              :color="address.isActive ? 'success' : 'gray'" 
+                              variant="subtle"
+                              size="xs"
+                            >
+                              {{ address.isActive ? 'Active' : 'Inactive' }}
+                            </UBadge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </UTable>
 
                 <div class="flex items-center justify-between px-4 py-3.5 text-sm text-muted">
                   <span>{{ filteredShops.length }} of {{ shops.length }} shop(s) loaded.</span>
