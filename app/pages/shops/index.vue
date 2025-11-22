@@ -1,46 +1,43 @@
 <script setup lang="ts">
-import axios from 'axios'
 import { useDebounceFn } from '@vueuse/core'
-import type { Shop, ShopType, CountryCode } from '~/types'
 import type { TableColumn, TableRow } from '@nuxt/ui'
 import { upperFirst } from 'scule'
+import { useShops } from '~/composables/useShops'
+import type { Shop, ShopType, CountryCode } from '~/types'
 
 definePageMeta({
   middleware: ['auth']
 })
 
-const { user } = useAuth()
+const { user } = useAuth();
 
-const UBadge = resolveComponent('UBadge')
-const UButton = resolveComponent('UButton')
-const UDropdownMenu = resolveComponent('UDropdownMenu')
-const table = useTemplateRef('table')
+const UBadge = resolveComponent('UBadge');
+const UButton = resolveComponent('UButton');
+const UDropdownMenu = resolveComponent('UDropdownMenu');
+const table = useTemplateRef('table');
 
-const selectedRow = ref<TableRow<Shop> | null>(null)
+const selectedRow = ref<TableRow<Shop> | null>(null);
 
 function onHover(_e: Event, row: TableRow<Shop> | null) {
-  selectedRow.value = row
+  selectedRow.value = row;
 }
 
 const breadcrumbs = [
   { label: 'Dashboard', to: '/' },
   { label: 'Shops', to: '/shops' }
-]
+];
 
-const shopTypes: ShopType[] = ['in_store', 'online', 'hybrid']
-const countries: CountryCode[] = ['Germany', 'Russia']
+const shopTypes: ShopType[] = ['in_store', 'online', 'hybrid'];
+const countries: CountryCode[] = ['Germany', 'Russia'];
 
 const filters = reactive({
   search: '',
   type: null as ShopType | null,
   country: null as CountryCode | null,
   showInactive: true
-})
+});
 
-const shops = ref<Shop[]>([])
-const isLoading = ref(false)
-const fetchError = ref<string | null>(null)
-const meta = ref<{ count?: number } | null>(null)
+const { shops, meta, isLoading, error: fetchError, fetchShops } = useShops();
 
 function buildParams() {
   return {
@@ -51,24 +48,15 @@ function buildParams() {
   }
 }
 
-async function fetchShops() {
-  isLoading.value = true
-  fetchError.value = null
+async function loadShops() {
   try {
-    const { data } = await axios.get<{ data: Shop[]; meta?: { count: number } }>('/shops', {
-      params: buildParams()
-    })
-    shops.value = Array.isArray(data.data) ? data.data : []
-    meta.value = data.meta ?? null
-  } catch (error) {
-    console.error('Failed to fetch shops:', error)
-    fetchError.value = 'Unable to load shops. Please try again.'
-  } finally {
-    isLoading.value = false
+    await fetchShops(buildParams());
+  } catch (err) {
+    console.error('Failed to fetch shops:', err);
   }
 }
 
-const debouncedFetch = useDebounceFn(fetchShops, 250)
+const debouncedFetch = useDebounceFn(loadShops, 250);
 
 watch(
   () => [filters.type, filters.country, filters.showInactive],
@@ -78,7 +66,7 @@ watch(
 )
 
 onMounted(() => {
-  fetchShops()
+  loadShops()
 })
 
 const filteredShops = computed(() => {
@@ -88,9 +76,9 @@ const filteredShops = computed(() => {
     shop.name.toLowerCase().includes(term) ||
     shop.slug.toLowerCase().includes(term)
   )
-})
+});
 
-const totalCount = computed(() => meta.value?.count ?? shops.value.length)
+const totalCount = computed(() => meta.value?.count ?? shops.value.length);
 
 const columns: TableColumn<Shop>[] = [
   {
@@ -137,17 +125,19 @@ const columns: TableColumn<Shop>[] = [
       return h('div', { class: 'text-right text-gray-500' }, row.original.addresses?.length ?? 0)
     }
   }
-]
+];
 
 function getAddressSummary(shop: Shop) {
-  if (!shop.addresses || shop.addresses.length === 0) return '—'
-  const primary = shop.addresses.find(address => address.isPrimary) ?? shop.addresses[0]
-  if (!primary) return '—'
-  return `${primary.city}, ${primary.street} ${primary.houseNumber}`
+  if (!shop.addresses || shop.addresses.length === 0) return '—';
+  
+  const primary = shop.addresses.find(address => address.isPrimary) ?? shop.addresses[0];
+  if (!primary) return '—';
+  
+  return `${primary.city}, ${primary.street} ${primary.houseNumber}`;
 }
 
 function handleShopCreated() {
-  fetchShops()
+  loadShops();
 }
 </script>
 
