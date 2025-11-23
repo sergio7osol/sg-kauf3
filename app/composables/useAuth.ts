@@ -33,8 +33,7 @@ export const useAuth = () => {
     if (user.value) return user.value;
 
     try {
-      const response = await axios.get<User>('/user');
-      const user = response.data;
+      const { data: user } = await axios.get<User>('/user');
 
       return {
         ...user,
