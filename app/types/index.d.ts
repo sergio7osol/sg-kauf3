@@ -12,6 +12,15 @@ export interface User {
   location: string
 }
 
+export interface PaginationMeta {
+  current_page: number
+  from: number | null
+  last_page: number
+  per_page: number
+  to: number | null
+  total: number
+}
+
 export interface Mail {
   id: number
   unread?: boolean
@@ -84,4 +93,62 @@ export interface Shop {
   displayOrder: number
   isActive: boolean
   addresses?: ShopAddress[]
+}
+
+export type PurchaseStatus = 'draft' | 'confirmed' | 'cancelled'
+
+export interface PurchaseLine {
+  id: number
+  purchaseId: number
+  lineNumber: number
+  productId?: number | null
+  description: string
+  quantity: number
+  unitPrice: number
+  lineAmount: number
+  taxRate: number
+  taxAmount: number
+  discountPercent?: number | null
+  discountAmount?: number | null
+  notes?: string | null
+}
+
+export interface Purchase {
+  id: number
+  userId: number
+  shopId: number
+  shopAddressId: number
+  purchaseDate: string
+  currency: string
+  status: PurchaseStatus
+  subtotal: number
+  taxAmount: number
+  totalAmount: number
+  notes?: string | null
+  receiptNumber?: string | null
+  createdAt: string
+  updatedAt: string
+  shop?: Shop
+  shopAddress?: ShopAddress
+  lines?: PurchaseLine[]
+}
+
+export interface CreatePurchasePayload {
+  shop_id: number
+  shop_address_id: number
+  purchase_date: string
+  currency: string
+  status?: PurchaseStatus
+  notes?: string | null
+  receipt_number?: string | null
+  lines: Array<{
+    line_number?: number
+    product_id?: number | null
+    description: string
+    quantity: number
+    unit_price: number
+    tax_rate: number
+    discount_percent?: number | null
+    notes?: string | null
+  }>
 }
