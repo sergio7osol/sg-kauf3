@@ -59,6 +59,11 @@ export const usePurchases = () => {
   const meta = useState<PaginationMeta | null>('purchasesMeta', () => null)
   const isLoading = useState('purchasesLoading', () => false)
   const error = useState<string | null>('purchasesError', () => null)
+  
+  // Single purchase state
+  const purchase = useState<Purchase | null>('purchase', () => null)
+  const purchaseLoading = useState('purchaseLoading', () => false)
+  const purchaseError = useState<string | null>('purchaseError', () => null)
 
   async function fetchPurchases(params: FetchPurchasesParams = {}) {
     isLoading.value = true
@@ -81,6 +86,28 @@ export const usePurchases = () => {
       throw err
     } finally {
       isLoading.value = false
+    }
+  }
+
+  async function fetchPurchase(id: number | string) {
+    purchaseLoading.value = true
+    purchaseError.value = null
+    purchase.value = null
+
+    try {
+      const { data } = await axios.get<{ data: Purchase }>(`/purchases/${id}`)
+      purchase.value = data.data
+      return data
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        purchaseError.value = 'Purchase not found.'
+      } else {
+        purchaseError.value = 'Unable to load purchase details. Please try again.'
+      }
+      console.error('Failed to fetch purchase:', err)
+      throw err
+    } finally {
+      purchaseLoading.value = false
     }
   }
 
@@ -107,7 +134,11 @@ export const usePurchases = () => {
     meta,
     isLoading,
     error,
+    purchase,
+    purchaseLoading,
+    purchaseError,
     fetchPurchases,
+    fetchPurchase,
     createPurchase,
     updatePurchase,
     deletePurchase

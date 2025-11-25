@@ -9,6 +9,8 @@ definePageMeta({
 })
 
 const UBadge = resolveComponent('UBadge')
+const UButton = resolveComponent('UButton')
+const UChip = resolveComponent('UChip')
 
 const { purchases, meta, isLoading, error: fetchError, fetchPurchases } = usePurchases()
 const { shops, fetchShops, isLoading: shopsLoading } = useShops()
@@ -102,8 +104,10 @@ interface PurchaseTableRow {
   purchase_date: string | null
   shop_name: string
   shop_address: string
+  payment_method: string
   total_amount: string
   status: Purchase['status']
+  _original: Purchase // Keep reference for expansion
 }
 
 const tableColumns: TableColumn<PurchaseTableRow>[] = [
@@ -120,8 +124,31 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
     header: 'Address' 
   },
   { 
+    accessorKey: 'payment_method', 
+    header: 'Payment',
+    cell: ({ row }: any) => {
+      const method = row.original.payment_method
+      if (method === 'Not specified') {
+        return h('span', { class: 'text-muted text-sm' }, method)
+      }
+      return h('span', { class: 'text-sm' }, method)
+    }
+  },
+  { 
     accessorKey: 'total_amount', 
-    header: 'Total' 
+    header: 'Total',
+    cell: ({ row }: any) => {
+      const purchase = row.original._original
+      const lineCount = purchase.lines?.length || 0
+      return h('div', { class: 'flex items-center gap-2' }, [
+        h('span', {}, row.original.total_amount),
+        lineCount > 0 ? h(UChip, { 
+          size: 'sm',
+          color: 'primary',
+          class: 'text-xs'
+        }, () => `${lineCount} ${lineCount === 1 ? 'line' : 'lines'}`) : null
+      ])
+    }
   },
   { 
     accessorKey: 'status', 
@@ -137,6 +164,36 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
         variant: 'subtle'
       }, () => row.original.status)
     }
+  },
+  {
+    id: 'actions',
+    header: '',
+    cell: ({ row }: any) => {
+      const purchase = row.original._original
+      const hasLines = purchase.lines && purchase.lines.length > 0
+      
+      return h('div', { class: 'flex items-center gap-1' }, [
+        h(UButton, {
+          icon: 'i-lucide-eye',
+          color: 'neutral',
+          variant: 'ghost',
+          size: 'sm',
+          to: `/purchases/${purchase.id}`,
+          title: 'View details'
+        }),
+        h(UButton, {
+          icon: row.getIsExpanded() ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down',
+          color: 'neutral',
+          variant: 'ghost',
+          size: 'sm',
+          disabled: !hasLines,
+          onClick: () => row.toggleExpanded(),
+          title: hasLines ? 'Toggle line items' : 'Enable "Include lines" to view details'
+        })
+      ])
+    },
+    enableSorting: false,
+    enableHiding: false
   }
 ]
 
@@ -146,8 +203,10 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
     purchase_date: purchase.purchaseDate ?? null,
     shop_name: purchase.shop?.name ?? `Shop #${purchase.shopId ?? 'Unknown'}`,
     shop_address: purchase.shopAddress ? `${purchase.shopAddress.city}, ${purchase.shopAddress.street}` : `Address #${purchase.shopAddressId ?? 'N/A'}`,
+    payment_method: purchase.userPaymentMethod?.name ?? 'Not specified',
     total_amount: `€${(purchase.totalAmount / 100).toFixed(2)}`,
-    status: purchase.status
+    status: purchase.status,
+    _original: purchase
   }))
 })
 </script>
@@ -220,7 +279,49 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
             :columns="tableColumns"
             :loading="isLoading"
             :empty-state="{ icon: 'i-lucide-inbox', label: 'No purchases found' }"
-          />
+          >
+            <template #expanded="{ row }">
+              <div class="p-4 bg-elevated/30">
+                <div v-if="row.original._original.lines && row.original._original.lines.length > 0">
+                  <h4 class="text-sm font-semibold mb-3 text-highlighted">Line Items</h4>
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                      <thead class="border-b border-default">
+                        <tr class="text-left text-muted">
+                          <th class="pb-2 pr-4">#</th>
+                          <th class="pb-2 pr-4">Description</th>
+                          <th class="pb-2 pr-4 text-right">Qty</th>
+                          <th class="pb-2 pr-4 text-right">Unit Price</th>
+                          <th class="pb-2 pr-4 text-right">Tax</th>
+                          <th class="pb-2 pr-4 text-right">Discount</th>
+                          <th class="pb-2 text-right">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-default">
+                        <tr v-for="line in row.original._original.lines" :key="line.id" class="text-default">
+                          <td class="py-2 pr-4 text-muted">{{ line.lineNumber }}</td>
+                          <td class="py-2 pr-4 font-medium">
+                            {{ line.description }}
+                            <span v-if="line.notes" class="block text-xs text-muted mt-0.5">{{ line.notes }}</span>
+                          </td>
+                          <td class="py-2 pr-4 text-right">{{ line.quantity }}</td>
+                          <td class="py-2 pr-4 text-right">€{{ (line.unitPrice / 100).toFixed(2) }}</td>
+                          <td class="py-2 pr-4 text-right">{{ line.taxRate }}%</td>
+                          <td class="py-2 pr-4 text-right">{{ line.discountPercent ? `${line.discountPercent}%` : '—' }}</td>
+                          <td class="py-2 text-right font-medium">
+                            €{{ ((line.quantity * line.unitPrice * (1 - (line.discountPercent || 0) / 100)) / 100).toFixed(2) }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div v-else class="text-sm text-muted text-center py-4">
+                  <p>No line items available. Enable "Include lines" filter and reload.</p>
+                </div>
+              </div>
+            </template>
+          </UTable>
         </UCard>
       </div>
     </template>
