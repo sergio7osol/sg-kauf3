@@ -69,7 +69,7 @@ export interface Range {
 }
 
 export type ShopType = 'in_store' | 'online' | 'hybrid'
-export type CountryCode = 'Germany' | 'Russia'
+export type CountryCode = 'Germany' | 'Russia' | 'DE' | 'RU'
 
 export interface ShopAddress {
   id: number
@@ -97,6 +97,17 @@ export interface Shop {
 
 export type PurchaseStatus = 'draft' | 'confirmed' | 'cancelled'
 
+export interface UserPaymentMethod {
+  id: number
+  userId: number
+  paymentMethodId?: number | null
+  name: string
+  notes?: string | null
+  isActive: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface PurchaseLine {
   id: number
   purchaseId: number
@@ -118,6 +129,7 @@ export interface Purchase {
   userId: number
   shopId: number
   shopAddressId: number
+  userPaymentMethodId?: number | null
   purchaseDate: string
   currency: string
   status: PurchaseStatus
@@ -130,12 +142,14 @@ export interface Purchase {
   updatedAt: string
   shop?: Shop
   shopAddress?: ShopAddress
+  userPaymentMethod?: UserPaymentMethod
   lines?: PurchaseLine[]
 }
 
 export interface CreatePurchasePayload {
   shop_id: number
   shop_address_id: number
+  user_payment_method_id?: number | null
   purchase_date: string
   currency: string
   status?: PurchaseStatus
