@@ -7,7 +7,12 @@ definePageMeta({
 
 const route = useRoute()
 const router = useRouter()
-const { purchase, purchaseLoading, purchaseError, fetchPurchase } = usePurchases()
+const toast = useToast()
+const { purchase, purchaseLoading, purchaseError, fetchPurchase, deletePurchase } = usePurchases()
+
+// Delete modal state
+const isDeleteModalOpen = ref(false)
+const isDeleting = ref(false)
 
 const purchaseId = computed(() => route.params.id as string)
 
@@ -46,6 +51,39 @@ const formattedDate = computed(() => {
     day: 'numeric'
   })
 })
+
+// Delete handler
+async function handleDelete() {
+  if (!purchase.value) return
+
+  isDeleting.value = true
+
+  try {
+    await deletePurchase(Number(purchaseId.value))
+
+    toast.add({
+      title: 'Purchase Deleted',
+      description: `Purchase #${purchaseId.value} has been deleted.`,
+      icon: 'i-lucide-check',
+      color: 'success'
+    })
+
+    // Navigate to purchases list
+    await router.push('/purchases')
+  } catch (err: any) {
+    const errorMessage = err?.response?.data?.message || 'Failed to delete purchase. Please try again.'
+
+    toast.add({
+      title: 'Error',
+      description: errorMessage,
+      icon: 'i-lucide-alert-circle',
+      color: 'error'
+    })
+  } finally {
+    isDeleting.value = false
+    isDeleteModalOpen.value = false
+  }
+}
 </script>
 
 <template>
@@ -62,11 +100,19 @@ const formattedDate = computed(() => {
               label="Back to list"
             />
             <UButton
+              :to="`/purchases/${purchaseId}/edit`"
               color="neutral"
               variant="outline"
               icon="i-lucide-pencil"
               label="Edit"
-              disabled
+            />
+            <UButton
+              color="error"
+              variant="outline"
+              icon="i-lucide-trash-2"
+              label="Delete"
+              class="btn-standard"
+              @click="isDeleteModalOpen = true"
             />
           </div>
         </template>
@@ -242,4 +288,72 @@ const formattedDate = computed(() => {
       </div>
     </template>
   </UDashboardPanel>
+
+  <!-- Delete Confirmation Modal -->
+  <UModal v-model:open="isDeleteModalOpen">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-error/10 flex-shrink-0">
+              <UIcon name="i-lucide-alert-triangle" class="h-5 w-5 text-error" />
+            </div>
+            <h3 class="text-lg font-semibold">Delete Purchase</h3>
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <p class="text-sm text-muted">This action cannot be undone</p>
+          
+          <p class="text-sm text-default">
+            Are you sure you want to delete <strong>Purchase #{{ purchaseId }}</strong>?
+          </p>
+          
+          <div v-if="purchase" class="p-4 bg-elevated rounded-lg border border-default">
+            <dl class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <dt class="text-muted">Date:</dt>
+                <dd class="font-medium">{{ formattedDate }}</dd>
+              </div>
+              <div class="flex justify-between">
+                <dt class="text-muted">Shop:</dt>
+                <dd class="font-medium">{{ purchase.shop?.name }}</dd>
+              </div>
+              <div class="flex justify-between">
+                <dt class="text-muted">Total:</dt>
+                <dd class="font-medium">€{{ (purchase.totalAmount / 100).toFixed(2) }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <UAlert
+            color="warning"
+            variant="soft"
+            icon="i-lucide-info"
+            title="Note"
+            description="The purchase will be soft deleted and can potentially be recovered by an administrator."
+          />
+        </div>
+
+        <template #footer>
+          <div class="flex gap-3 justify-end">
+            <UButton
+              color="neutral"
+              variant="outline"
+              label="Cancel"
+              :disabled="isDeleting"
+              @click="isDeleteModalOpen = false"
+            />
+            <UButton
+              color="error"
+              icon="i-lucide-trash-2"
+              label="Delete Purchase"
+              :loading="isDeleting"
+              @click="handleDelete"
+            />
+          </div>
+        </template>
+      </UCard>
+    </template>
+  </UModal>
 </template>

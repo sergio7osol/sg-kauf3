@@ -20,3 +20,118 @@
 :root {
   font-size: 1.2rem;
 }
+
+.btn-standard {
+  cursor: pointer;
+}
+
+.btn-standard:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+  text-shadow: none;
+  background-color: #ddd;
+  color: #999;
+  border-color: #ddd;
+  border-radius: .5rem;
+  cursor: not-allowed;
+}
+
+/* Total Spent Card - Hero Animation */
+.total-spent-card {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated gradient glow effect */
+.total-spent-animate::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(var(--color-primary-400), 0.3) 50%,
+    transparent 70%
+  );
+  background-size: 200% 200%;
+  animation: shimmer 2s ease-in-out;
+  border-radius: inherit;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Heartbeat animation on the card */
+.total-spent-animate {
+  animation: heartbeat 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scale(1.02);
+}
+
+@keyframes heartbeat {
+  0% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.08);
+  }
+  30% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.05);
+  }
+  60% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 50%;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    background-position: -200% 50%;
+    opacity: 0;
+  }
+}
+
+/* Glow ring effect */
+.total-spent-animate::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 
+    0 0 20px rgba(var(--color-primary-500), 0.2),
+    0 0 40px rgba(var(--color-primary-500), 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: glow-pulse 0.8s ease-out;
+  pointer-events: none;
+}
+
+@keyframes glow-pulse {
+  0% {
+    opacity: 0;
+    box-shadow: 
+      0 0 0 rgba(var(--color-primary-500), 0),
+      0 0 0 rgba(var(--color-primary-500), 0);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 
+      0 0 30px rgba(var(--color-primary-500), 0.4),
+      0 0 60px rgba(var(--color-primary-500), 0.2);
+  }
+  100% {
+    opacity: 1;
+    box-shadow: 
+      0 0 20px rgba(var(--color-primary-500), 0.2),
+      0 0 40px rgba(var(--color-primary-500), 0.1);
+  }
+}

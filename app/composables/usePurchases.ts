@@ -121,12 +121,32 @@ export const usePurchases = () => {
     }
   }
 
-  async function updatePurchase() {
-    throw new Error('updatePurchase is not implemented yet.')
+  async function updatePurchase(id: number, payload: Partial<CreatePurchasePayload>) {
+    try {
+      const { data } = await axios.patch<{ data: Purchase }>(`/purchases/${id}`, payload)
+      // Update single purchase state if it matches
+      if (purchase.value?.id === id) {
+        purchase.value = data.data
+      }
+      return data
+    } catch (err) {
+      console.error('Failed to update purchase:', err)
+      throw err
+    }
   }
 
-  async function deletePurchase() {
-    throw new Error('deletePurchase is not implemented yet.')
+  async function deletePurchase(id: number) {
+    try {
+      const { data } = await axios.delete<{ message: string }>(`/purchases/${id}`)
+      // Clear single purchase state if it matches
+      if (purchase.value?.id === id) {
+        purchase.value = null
+      }
+      return data
+    } catch (err) {
+      console.error('Failed to delete purchase:', err)
+      throw err
+    }
   }
 
   return {
