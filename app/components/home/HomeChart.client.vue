@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, format } from 'date-fns'
+import { format } from 'date-fns'
 import { VisXYContainer, VisLine, VisAxis, VisArea, VisCrosshair, VisTooltip } from '@unovis/vue'
 import type { Period, Range } from '~/types'
+import { usePurchaseChart, type ChartDataPoint } from '~/composables/usePurchaseChart'
 
 const cardRef = useTemplateRef<HTMLElement | null>('cardRef')
 
@@ -10,34 +11,34 @@ const props = defineProps<{
   range: Range
 }>()
 
-type DataRecord = {
-  date: Date
-  amount: number
-}
+type DataRecord = ChartDataPoint
 
 const { width } = useElementSize(cardRef)
 
-const data = ref<DataRecord[]>([])
+const { chartData, total, isLoading, error, fetchChartData } = usePurchaseChart()
 
-watch([() => props.period, () => props.range], () => {
-  const dates = ({
-    daily: eachDayOfInterval,
-    weekly: eachWeekOfInterval,
-    monthly: eachMonthOfInterval
-  } as Record<Period, typeof eachDayOfInterval>)[props.period](props.range)
+// Watch for period/range changes and fetch real data
+watch(
+  [() => props.period, () => props.range],
+  async () => {
+    await fetchChartData(props.period, props.range)
+  },
+  { immediate: true }
+)
 
-  const min = 1000
-  const max = 10000
-
-  data.value = dates.map(date => ({ date, amount: Math.floor(Math.random() * (max - min + 1)) + min }))
-}, { immediate: true })
+const data = computed(() => chartData.value)
 
 const x = (_: DataRecord, i: number) => i
-const y = (d: DataRecord) => d.amount
+const y = (d: DataRecord) => d.amount / 100 // Convert cents to euros for display
 
-const total = computed(() => data.value.reduce((acc: number, { amount }) => acc + amount, 0))
-
-const formatNumber = new Intl.NumberFormat('en', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format
+// Format currency in EUR
+const formatNumber = (value: number) => {
+  return new Intl.NumberFormat('de-DE', { 
+    style: 'currency', 
+    currency: 'EUR', 
+    maximumFractionDigits: 2 
+  }).format(value / 100) // Convert cents to euros
+}
 
 const formatDate = (date: Date): string => {
   return ({
@@ -48,11 +49,12 @@ const formatDate = (date: Date): string => {
 }
 
 const xTicks = (i: number) => {
-  if (i === 0 || i === data.value.length - 1 || !data.value[i]) {
+  const dataArray = data.value
+  if (i === 0 || i === dataArray.length - 1 || !dataArray[i]) {
     return ''
   }
 
-  return formatDate(data.value[i].date)
+  return formatDate(dataArray[i].date)
 }
 
 const template = (d: DataRecord) => `${formatDate(d.date)}: ${formatNumber(d.amount)}`
@@ -61,17 +63,44 @@ const template = (d: DataRecord) => `${formatDate(d.date)}: ${formatNumber(d.amo
 <template>
   <UCard ref="cardRef" :ui="{ root: 'overflow-visible', body: '!px-0 !pt-0 !pb-3' }">
     <template #header>
-      <div>
-        <p class="text-xs text-muted uppercase mb-1.5">
-          Revenue
-        </p>
-        <p class="text-3xl text-highlighted font-semibold">
-          {{ formatNumber(total) }}
-        </p>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs text-muted uppercase mb-1.5">
+            Total Spending
+          </p>
+          <p class="text-3xl text-highlighted font-semibold" :class="{ 'animate-pulse': isLoading }">
+            {{ formatNumber(total) }}
+          </p>
+        </div>
+        <div v-if="isLoading" class="flex items-center gap-2 text-sm text-muted">
+          <UIcon name="i-lucide-loader-2" class="animate-spin" />
+          Loading...
+        </div>
       </div>
     </template>
 
+    <!-- Error State -->
+    <div v-if="error" class="h-96 flex items-center justify-center">
+      <UAlert
+        color="error"
+        variant="soft"
+        icon="i-lucide-alert-circle"
+        title="Error"
+        :description="error"
+      />
+    </div>
+
+    <!-- Empty State -->
+    <div v-else-if="!isLoading && data.length === 0" class="h-96 flex items-center justify-center">
+      <div class="text-center text-muted">
+        <UIcon name="i-lucide-bar-chart-3" class="w-12 h-12 mb-2 opacity-50" />
+        <p>No purchase data for this period</p>
+      </div>
+    </div>
+
+    <!-- Chart -->
     <VisXYContainer
+      v-else
       :data="data"
       :padding="{ top: 40 }"
       class="h-96"
