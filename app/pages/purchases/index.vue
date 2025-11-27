@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { h } from 'vue'
 import axios from 'axios'
 import type { TableColumn } from '@nuxt/ui'
 import { usePurchases, type FetchPurchasesParams } from '~/composables/usePurchases'
@@ -295,31 +296,60 @@ interface PurchaseTableRow {
   shop_name: string
   shop_address: string
   payment_method: string
-  total_amount: string
+  total_amount_value: number
+  total_amount_display: string
   status: Purchase['status']
   _original: Purchase // Keep reference for expansion
+}
+
+function createSortableHeader(label: string) {
+  return ({ column }: any) => {
+    const isSorted = column.getIsSorted()
+    const icon = isSorted ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow') : 'i-lucide-arrow-up-down'
+
+    return h(UButton, {
+      color: 'neutral',
+      variant: 'ghost',
+      class: '-mx-2 px-2 flex items-center gap-1 text-sm font-medium text-highlighted',
+      label,
+      icon,
+      iconRight: true,
+      onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
+    })
+  }
 }
 
 const isDeleteModalOpen = ref(false)
 const isDeleting = ref(false)
 const purchaseToDelete = ref<Purchase | null>(null)
 
+// Sorting state for TanStack Table
+const sorting = ref([
+  { id: 'purchase_date', desc: true }
+])
+
+const purchaseDateFormatter = new Intl.DateTimeFormat('de-DE', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric'
+})
+
 const tableColumns: TableColumn<PurchaseTableRow>[] = [
   { 
     accessorKey: 'purchase_date', 
-    header: 'Date' 
+    header: createSortableHeader('Date')
   },
   { 
     accessorKey: 'shop_name', 
-    header: 'Shop' 
+    header: createSortableHeader('Shop')
   },
   { 
     accessorKey: 'shop_address', 
-    header: 'Address' 
+    header: createSortableHeader('Address')
   },
   { 
     accessorKey: 'payment_method', 
-    header: 'Payment',
+    header: createSortableHeader('Payment'),
     cell: ({ row }: any) => {
       const method = row.original.payment_method
       if (method === 'Not specified') {
@@ -329,13 +359,13 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
     }
   },
   { 
-    accessorKey: 'total_amount', 
-    header: 'Total',
+    accessorKey: 'total_amount_value', 
+    header: createSortableHeader('Total'),
     cell: ({ row }: any) => {
       const purchase = row.original._original
       const lineCount = purchase.lines?.length || 0
       return h('div', { class: 'flex items-center gap-2' }, [
-        h('span', {}, row.original.total_amount),
+        h('span', {}, row.original.total_amount_display),
         lineCount > 0 ? h(UChip, { 
           size: 'sm',
           color: 'primary',
@@ -346,7 +376,7 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
   },
   { 
     accessorKey: 'status', 
-    header: 'Status',
+    header: createSortableHeader('Status'),
     cell: ({ row }: any) => {
       const statusColors = {
         confirmed: 'green',
@@ -404,11 +434,16 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
 const tableRows = computed<PurchaseTableRow[]>(() => {
   return purchases.value.map((purchase: Purchase) => ({
     id: purchase.id,
-    purchase_date: purchase.purchaseDate ?? null,
+    purchase_date: (() => {
+      if (!purchase.purchaseDate) return null
+      const parsed = new Date(purchase.purchaseDate)
+      return Number.isNaN(parsed.getTime()) ? null : purchaseDateFormatter.format(parsed)
+    })(),
     shop_name: purchase.shop?.name ?? `Shop #${purchase.shopId ?? 'Unknown'}`,
     shop_address: purchase.shopAddress ? `${purchase.shopAddress.city}, ${purchase.shopAddress.street} ${purchase.shopAddress.houseNumber}` : `Address #${purchase.shopAddressId ?? 'N/A'}`,
     payment_method: purchase.userPaymentMethod?.name ?? 'Not specified',
-    total_amount: `€${(purchase.totalAmount / 100).toFixed(2)}`,
+    total_amount_value: purchase.totalAmount ?? 0,
+    total_amount_display: `€${(purchase.totalAmount / 100).toFixed(2)}`,
     status: purchase.status,
     _original: purchase
   }))
@@ -559,6 +594,7 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
           </template>
 
           <UTable
+            v-model:sorting="sorting"
             :data="tableRows"
             :columns="tableColumns"
             :loading="isLoading"
