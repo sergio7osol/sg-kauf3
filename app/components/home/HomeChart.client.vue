@@ -132,15 +132,84 @@ watch(
 
 const data = computed(() => chartData.value)
 
-const tickLabels = computed(() => {
+const tickConfig = computed(() => {
   const config = generateTickConfig(props.range)
-  const map = new Map<string, string>()
-  config.dates.forEach((date) => {
-    map.set(normalizeDateKey(date), formatTickLabel(date, config.resolution))
+  const dateIndexMap = new Map<string, number>()
+  data.value.forEach((record: DataRecord, index: number) => {
+    dateIndexMap.set(normalizeDateKey(record.date), index)
   })
 
-  return map
+  const ticks: number[] = []
+  const labels = new Map<number, string>()
+
+  config.dates.forEach((date) => {
+    const key = normalizeDateKey(date)
+    const index = dateIndexMap.get(key)
+    if (index !== undefined) {
+      ticks.push(index)
+      labels.set(index, formatTickLabel(date, config.resolution))
+    }
+  })
+
+  const uniqueTicks = new Set<number>(ticks)
+  const dataLength = data.value.length
+
+  // Special handling: full calendar month should show grid lines for ALL days,
+  // but only labels for the 1st, every 5th day (5, 10, 15, ...), and the last day
+  if (dataLength >= 2 && isFullMonthRange(props.range)) {
+    uniqueTicks.clear()
+    labels.clear()
+
+    // Add ALL day indices for grid lines
+    for (let i = 0; i < dataLength; i++) {
+      uniqueTicks.add(i)
+    }
+
+    // Only add labels for the 1st, every 5th day (5, 10, 15, ...), and the last day
+    for (let i = 0; i < dataLength; i++) {
+      const point = data.value[i]
+      if (!point) {
+        continue
+      }
+
+      const dayOfMonth = point.date.getDate()
+      const isFirstDay = i === 0
+      const isLastDay = i === dataLength - 1
+      const isEveryFifthDay = dayOfMonth % 5 === 0
+
+      if (isFirstDay || isEveryFifthDay || isLastDay) {
+        labels.set(i, formatTickLabel(point.date, 'day'))
+      }
+    }
+  } else if (dataLength > 2 && uniqueTicks.size <= 2) {
+    const fallbackCount = Math.min(
+      dataLength,
+      Math.max(3, Math.min(7, Math.round(dataLength / 10) + 2))
+    )
+
+    if (fallbackCount > uniqueTicks.size) {
+      const step = (dataLength - 1) / (fallbackCount - 1)
+      const desiredResolution = config.resolution === 'week' ? 'day' : config.resolution
+
+      for (let i = 0; i < fallbackCount; i++) {
+        const index = Math.round(i * step)
+        if (!uniqueTicks.has(index)) {
+          uniqueTicks.add(index)
+          const point = data.value[index]
+          if (point) {
+            labels.set(index, formatTickLabel(point.date, desiredResolution))
+          }
+        }
+      }
+    }
+  }
+
+  const sortedTicks = Array.from(uniqueTicks).sort((a, b) => a - b)
+
+  return { ticks: sortedTicks, labels }
 })
+
+const axisTickValues = computed(() => tickConfig.value.ticks)
 
 const x = (_: DataRecord, i: number) => i
 const y = (d: DataRecord) => d.amount / 100 // Convert cents to euros for display
@@ -168,10 +237,34 @@ const xTicks = (i: number) => {
     return ''
   }
 
-  return tickLabels.value.get(normalizeDateKey(record.date)) ?? ''
+  return tickConfig.value.labels.get(i) ?? ''
 }
 
 const template = (d: DataRecord) => `${formatDate(d.date)}: ${formatNumber(d.amount)}`
+
+function applyAxisTickStyles() {
+  const cardEl = cardRef.value
+  if (!cardEl) {
+    return
+  }
+
+  const axisEl = cardEl.querySelector('.vis-axis.vis-axis-x')
+  if (!axisEl) {
+    return
+  }
+
+  const tickElements = axisEl.querySelectorAll<SVGGElement>('.vis-axis-tick')
+  tickElements.forEach((tickEl, idx) => {
+    tickEl.classList.remove('axis-tick--major', 'axis-tick--minor')
+    const tickIndex = axisTickValues.value[idx]
+    if (tickIndex === undefined) {
+      return
+    }
+
+    const isMajor = tickConfig.value.majorTickIndices.has(tickIndex)
+    tickEl.classList.add(isMajor ? 'axis-tick--major' : 'axis-tick--minor')
+  })
+}
 
 // Check if a preset matches the current range (approximately)
 function isPresetActive(presetKey: string): boolean {
@@ -257,7 +350,7 @@ function normalizeDateKey(date: Date): string {
 function formatTickLabel(date: Date, resolution: TickResolution): string {
   switch (resolution) {
     case 'day':
-      return format(date, 'EEE d MMM')
+      return format(date, 'd MMM')
     case 'week':
       return format(date, 'd MMM')
     case 'month':
@@ -267,6 +360,22 @@ function formatTickLabel(date: Date, resolution: TickResolution): string {
       return format(date, 'MMM yyyy')
   }
 }
+
+/**
+ * Check if the range represents a full calendar month (1st to last day of same month)
+ */
+function isFullMonthRange(range: Range): boolean {
+  const start = startOfDay(range.start)
+  const end = startOfDay(range.end)
+  
+  // Check if start is the 1st of month and end is last day of same month
+  const isFirstOfMonth = start.getDate() === 1
+  const expectedEnd = endOfMonth(start)
+  const isLastOfMonth = end.getTime() === startOfDay(expectedEnd).getTime()
+  
+  return isFirstOfMonth && isLastOfMonth
+}
+
 </script>
 
 <template>
@@ -277,13 +386,12 @@ function formatTickLabel(date: Date, resolution: TickResolution): string {
           <p class="text-xs text-muted uppercase mb-1.5">
             Total Spending
           </p>
-          <p class="text-3xl text-highlighted font-semibold" :class="{ 'animate-pulse': isLoading }">
+          <p class="text-3xl font-semibold" :class="{ 'animate-pulse': isLoading }">
             {{ formatNumber(total) }}
           </p>
         </div>
 
         <div class="flex items-center gap-2">
-          <!-- Quick Period Buttons -->
           <div class="flex items-center rounded-lg border border-default bg-elevated/50 p-0.5">
             <button
               v-for="preset in periodPresets"
@@ -305,7 +413,6 @@ function formatTickLabel(date: Date, resolution: TickResolution): string {
             </button>
           </div>
 
-          <!-- Loading indicator -->
           <div v-if="isLoading && !isLoadingAllTime" class="flex items-center gap-2 text-sm text-muted">
             <UIcon name="i-lucide-loader-2" class="animate-spin" />
           </div>
@@ -313,7 +420,6 @@ function formatTickLabel(date: Date, resolution: TickResolution): string {
       </div>
     </template>
 
-    <!-- Error State -->
     <div v-if="error" class="h-96 flex items-center justify-center">
       <UAlert
         color="error"
@@ -356,6 +462,7 @@ function formatTickLabel(date: Date, resolution: TickResolution): string {
         type="x"
         :x="x"
         :tick-format="xTicks"
+        :tick-values="axisTickValues"
       />
 
       <VisCrosshair
@@ -381,4 +488,5 @@ function formatTickLabel(date: Date, resolution: TickResolution): string {
   --vis-tooltip-border-color: var(--ui-border);
   --vis-tooltip-text-color: var(--ui-text-highlighted);
 }
+
 </style>
