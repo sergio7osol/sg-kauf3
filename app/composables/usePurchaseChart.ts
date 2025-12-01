@@ -14,6 +14,28 @@ export interface PurchaseChartResult {
   error: string | null
 }
 
+export interface DateRangeResponse {
+  data: {
+    earliestDate: string | null
+    latestDate: string | null
+    totalCount: number
+  }
+}
+
+/**
+ * Fetches the user's purchase date range (earliest and latest dates).
+ * Used for "All Time" period selection.
+ */
+export async function fetchPurchaseDateRange(): Promise<DateRangeResponse['data'] | null> {
+  try {
+    const response = await axios.get<DateRangeResponse>('/purchases/date-range')
+    return response.data.data
+  } catch (err) {
+    console.error('Failed to fetch purchase date range:', err)
+    return null
+  }
+}
+
 /**
  * Composable for fetching and aggregating purchase data for charts.
  * Aggregates purchases by period (daily/weekly/monthly) within a date range.
@@ -44,11 +66,11 @@ export function usePurchaseChart() {
       let lastPage = 1
 
       do {
-        const response = await axios.get<{ data: Purchase[]; meta?: { last_page: number } }>('/purchases', {
+        const response = await axios.get<{ data: Purchase[]; meta?: { lastPage: number } }>('/purchases', {
           params: {
-            date_from: dateFrom,
-            date_to: dateTo,
-            per_page: 100,
+            dateFrom,
+            dateTo,
+            perPage: 100,
             page: currentPage,
             status: 'confirmed' // Only count confirmed purchases
           }
@@ -58,7 +80,7 @@ export function usePurchaseChart() {
         allPurchases.push(...purchases)
 
         if (currentPage === 1 && response.data.meta) {
-          lastPage = response.data.meta.last_page || 1
+          lastPage = response.data.meta.lastPage || 1
         }
 
         currentPage++
@@ -121,10 +143,7 @@ function aggregatePurchases(
 
   // Aggregate purchases into buckets
   purchases.forEach(purchase => {
-    // Handle both camelCase and snake_case from API
-    const purchaseDate = purchase.purchaseDate || (purchase as any).purchase_date
-    const totalAmount = purchase.totalAmount ?? (purchase as any).total_amount ?? 0
-    
+    const { purchaseDate, totalAmount = 0 } = purchase
     if (!purchaseDate) return
 
     const date = new Date(purchaseDate)

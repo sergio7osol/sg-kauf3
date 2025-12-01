@@ -2,56 +2,29 @@ import axios from 'axios'
 import type { Purchase, PurchaseStatus, CreatePurchasePayload, PaginationMeta } from '~/types'
 
 export interface FetchPurchasesParams {
-  shop_id?: number | null
-  date_from?: string | null
-  date_to?: string | null
-  status?: PurchaseStatus | null
-  include_lines?: boolean
-  per_page?: number
-  page?: number
-  // Allow camelCase aliases (converted internally)
   shopId?: number | null
   dateFrom?: string | null
   dateTo?: string | null
+  status?: PurchaseStatus | null
   includeLines?: boolean
   perPage?: number
+  page?: number
 }
 
-export function normalizeFetchPurchasesParams(params: FetchPurchasesParams = {}): Record<string, unknown> {
-  const normalized: Record<string, unknown> = {}
-
-  const mappings: Record<string, keyof FetchPurchasesParams> = {
-    shop_id: 'shop_id',
-    date_from: 'date_from',
-    date_to: 'date_to',
-    status: 'status',
-    include_lines: 'include_lines',
-    per_page: 'per_page',
-    page: 'page'
-  }
-
-  const aliasPairs: Array<[keyof FetchPurchasesParams, keyof FetchPurchasesParams]> = [
-    ['shop_id', 'shopId'],
-    ['date_from', 'dateFrom'],
-    ['date_to', 'dateTo'],
-    ['include_lines', 'includeLines'],
-    ['per_page', 'perPage']
-  ]
-
-  Object.entries(mappings).forEach(([snakeKey, snakeProp]) => {
-    const alias = aliasPairs.find(([target]) => target === snakeProp)
-    const aliasProp = alias?.[1]
-    const value = params[snakeProp] ?? (aliasProp ? params[aliasProp] : undefined)
+/**
+ * Build query params object, filtering out null/undefined/empty values.
+ * Boolean values are converted to 1/0 for API compatibility.
+ */
+function buildQueryParams(params: FetchPurchasesParams): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+  
+  for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== '') {
-      normalized[snakeKey] = typeof value === 'boolean' ? Number(value) : value
+      result[key] = typeof value === 'boolean' ? Number(value) : value
     }
-  })
-
-  if (params.page !== undefined) {
-    normalized.page = params.page
   }
-
-  return normalized
+  
+  return result
 }
 
 export const usePurchases = () => {
@@ -69,7 +42,7 @@ export const usePurchases = () => {
     isLoading.value = true
     error.value = null
     purchases.value = [] // Clear stale data before fetch
-    const queryParams = normalizeFetchPurchasesParams(params)
+    const queryParams = buildQueryParams(params)
 
     try {
       const { data } = await axios.get<{ data: Purchase[]; meta?: PaginationMeta }>('/purchases', {

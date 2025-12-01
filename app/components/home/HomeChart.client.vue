@@ -1,8 +1,22 @@
 <script setup lang="ts">
-import { format } from 'date-fns'
+import {
+  format,
+  sub,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+  differenceInCalendarDays,
+  addDays,
+  eachMonthOfInterval,
+  addYears,
+  startOfDay
+} from 'date-fns'
 import { VisXYContainer, VisLine, VisAxis, VisArea, VisCrosshair, VisTooltip } from '@unovis/vue'
 import type { Period, Range } from '~/types'
-import { usePurchaseChart, type ChartDataPoint } from '~/composables/usePurchaseChart'
+import { usePurchaseChart, fetchPurchaseDateRange, type ChartDataPoint } from '~/composables/usePurchaseChart'
 
 const cardRef = useTemplateRef<HTMLElement | null>('cardRef')
 
@@ -11,7 +25,97 @@ const props = defineProps<{
   range: Range
 }>()
 
+const emit = defineEmits<{
+  'update:range': [range: Range]
+}>()
+
 type DataRecord = ChartDataPoint
+
+// Quick period presets
+interface PeriodPreset {
+  label: string
+  key: string
+  getRange: () => Promise<Range> | Range
+}
+
+const isLoadingAllTime = ref(false)
+
+const periodPresets: PeriodPreset[] = [
+  {
+    label: 'Week',
+    key: '1w',
+    // Full ISO week (Monday to Sunday)
+    getRange: () => ({
+      start: startOfWeek(new Date(), { weekStartsOn: 1 }),
+      end: endOfWeek(new Date(), { weekStartsOn: 1 })
+    })
+  },
+  {
+    label: 'Month',
+    key: '1m',
+    // Full calendar month (1st to last day)
+    getRange: () => ({
+      start: startOfMonth(new Date()),
+      end: endOfMonth(new Date())
+    })
+  },
+  {
+    label: '3 Months',
+    key: '3m',
+    // 3 complete calendar months (current month + 2 previous)
+    getRange: () => ({
+      start: startOfMonth(sub(new Date(), { months: 2 })),
+      end: endOfMonth(new Date())
+    })
+  },
+  {
+    label: '6 Months',
+    key: '6m',
+    // 6 complete calendar months (current month + 5 previous)
+    getRange: () => ({
+      start: startOfMonth(sub(new Date(), { months: 5 })),
+      end: endOfMonth(new Date())
+    })
+  },
+  {
+    label: 'Year',
+    key: '1y',
+    // Full calendar year (Jan 1 to Dec 31)
+    getRange: () => ({
+      start: startOfYear(new Date()),
+      end: endOfYear(new Date())
+    })
+  },
+  {
+    label: 'All',
+    key: 'all',
+    getRange: async () => {
+      isLoadingAllTime.value = true
+      try {
+        const dateRange = await fetchPurchaseDateRange()
+        if (dateRange?.earliestDate && dateRange?.latestDate) {
+          return {
+            start: new Date(dateRange.earliestDate),
+            end: new Date(dateRange.latestDate)
+          }
+        }
+      } finally {
+        isLoadingAllTime.value = false
+      }
+      // Fallback to current year if no data
+      return { start: startOfYear(new Date()), end: endOfYear(new Date()) }
+    }
+  }
+]
+
+// Track which preset is currently active
+const activePreset = ref<string>('1m') // Default to 1 month
+
+async function selectPreset(preset: PeriodPreset) {
+  activePreset.value = preset.key
+  const newRange = await preset.getRange()
+  emit('update:range', newRange)
+}
 
 const { width } = useElementSize(cardRef)
 
@@ -27,6 +131,16 @@ watch(
 )
 
 const data = computed(() => chartData.value)
+
+const tickLabels = computed(() => {
+  const config = generateTickConfig(props.range)
+  const map = new Map<string, string>()
+  config.dates.forEach((date) => {
+    map.set(normalizeDateKey(date), formatTickLabel(date, config.resolution))
+  })
+
+  return map
+})
 
 const x = (_: DataRecord, i: number) => i
 const y = (d: DataRecord) => d.amount / 100 // Convert cents to euros for display
@@ -49,21 +163,116 @@ const formatDate = (date: Date): string => {
 }
 
 const xTicks = (i: number) => {
-  const dataArray = data.value
-  if (i === 0 || i === dataArray.length - 1 || !dataArray[i]) {
+  const record = data.value[i]
+  if (!record) {
     return ''
   }
 
-  return formatDate(dataArray[i].date)
+  return tickLabels.value.get(normalizeDateKey(record.date)) ?? ''
 }
 
 const template = (d: DataRecord) => `${formatDate(d.date)}: ${formatNumber(d.amount)}`
+
+// Check if a preset matches the current range (approximately)
+function isPresetActive(presetKey: string): boolean {
+  return activePreset.value === presetKey
+}
+
+type TickResolution = 'day' | 'week' | 'month' | 'year'
+
+interface TickConfig {
+  dates: Date[]
+  resolution: TickResolution
+}
+
+function generateTickConfig(range: Range): TickConfig {
+  const start = startOfDay(range.start)
+  const end = startOfDay(range.end)
+  const totalDays = differenceInCalendarDays(end, start) + 1
+
+  if (totalDays <= 8) {
+    return {
+      dates: generateDailyTicks(start, end),
+      resolution: 'day'
+    }
+  }
+
+  if (totalDays <= 40) {
+    return {
+      dates: generateWeeklyTicks(start, end),
+      resolution: 'week'
+    }
+  }
+
+  if (totalDays <= 400) {
+    return {
+      dates: eachMonthOfInterval({ start, end }).map(date => startOfMonth(date)),
+      resolution: 'month'
+    }
+  }
+
+  return {
+    dates: generateYearlyTicks(start, end),
+    resolution: 'year'
+  }
+}
+
+function generateDailyTicks(start: Date, end: Date): Date[] {
+  const days = differenceInCalendarDays(end, start) + 1
+  return Array.from({ length: days }, (_, index) => addDays(start, index))
+}
+
+function generateWeeklyTicks(start: Date, end: Date): Date[] {
+  const ticks: Date[] = []
+  let pointer = start
+
+  while (pointer <= end) {
+    ticks.push(pointer)
+    pointer = addDays(pointer, 7)
+  }
+
+  if (ticks.length === 0 || ticks[ticks.length - 1].getTime() !== end.getTime()) {
+    ticks.push(end)
+  }
+
+  return ticks
+}
+
+function generateYearlyTicks(start: Date, end: Date): Date[] {
+  const ticks: Date[] = []
+  let pointer = startOfYear(start)
+
+  while (pointer <= end) {
+    ticks.push(pointer)
+    pointer = addYears(pointer, 1)
+  }
+
+  return ticks
+}
+
+function normalizeDateKey(date: Date): string {
+  return startOfDay(date).toISOString()
+}
+
+function formatTickLabel(date: Date, resolution: TickResolution): string {
+  switch (resolution) {
+    case 'day':
+      return format(date, 'EEE d MMM')
+    case 'week':
+      return format(date, 'd MMM')
+    case 'month':
+      return format(date, 'MMM')
+    case 'year':
+    default:
+      return format(date, 'MMM yyyy')
+  }
+}
 </script>
 
 <template>
   <UCard ref="cardRef" :ui="{ root: 'overflow-visible', body: '!px-0 !pt-0 !pb-3' }">
     <template #header>
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between gap-4">
         <div>
           <p class="text-xs text-muted uppercase mb-1.5">
             Total Spending
@@ -72,9 +281,34 @@ const template = (d: DataRecord) => `${formatDate(d.date)}: ${formatNumber(d.amo
             {{ formatNumber(total) }}
           </p>
         </div>
-        <div v-if="isLoading" class="flex items-center gap-2 text-sm text-muted">
-          <UIcon name="i-lucide-loader-2" class="animate-spin" />
-          Loading...
+
+        <div class="flex items-center gap-2">
+          <!-- Quick Period Buttons -->
+          <div class="flex items-center rounded-lg border border-default bg-elevated/50 p-0.5">
+            <button
+              v-for="preset in periodPresets"
+              :key="preset.key"
+              type="button"
+              class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
+              :class="[
+                isPresetActive(preset.key)
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted hover:text-default hover:bg-elevated'
+              ]"
+              :disabled="isLoading || isLoadingAllTime"
+              @click="selectPreset(preset)"
+            >
+              <span v-if="preset.key === 'all' && isLoadingAllTime" class="flex items-center gap-1">
+                <UIcon name="i-lucide-loader-2" class="w-3 h-3 animate-spin" />
+              </span>
+              <span v-else>{{ preset.label }}</span>
+            </button>
+          </div>
+
+          <!-- Loading indicator -->
+          <div v-if="isLoading && !isLoadingAllTime" class="flex items-center gap-2 text-sm text-muted">
+            <UIcon name="i-lucide-loader-2" class="animate-spin" />
+          </div>
         </div>
       </div>
     </template>

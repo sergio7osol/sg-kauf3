@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { sub } from 'date-fns'
+import { startOfMonth, endOfMonth } from 'date-fns'
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { Period, Range } from '~/types'
 
@@ -15,11 +15,17 @@ const items = [[{
   to: '/customers'
 }]] satisfies DropdownMenuItem[][]
 
+// Default to full calendar month (1st to last day of current month)
 const range = shallowRef<Range>({
-  start: sub(new Date(), { days: 14 }),
-  end: new Date()
+  start: startOfMonth(new Date()),
+  end: endOfMonth(new Date())
 })
 const period = ref<Period>('daily')
+
+// Handler for when HomeChart requests a range change (quick period buttons)
+function handleRangeUpdate(newRange: Range) {
+  range.value = newRange
+}
 </script>
 
 <template>
@@ -62,7 +68,7 @@ const period = ref<Period>('daily')
 
     <template #body>
       <HomeStats :period="period" :range="range" />
-      <HomeChart :period="period" :range="range" />
+      <HomeChart :period="period" :range="range" @update:range="handleRangeUpdate" />
       <HomeSales :period="period" :range="range" />
     </template>
   </UDashboardPanel>
