@@ -13,10 +13,10 @@ export interface User {
 }
 
 export interface PaginationMeta {
-  current_page: number
+  currentPage: number
   from: number | null
-  last_page: number
-  per_page: number
+  lastPage: number
+  perPage: number
   to: number | null
   total: number
 }
@@ -147,22 +147,22 @@ export interface Purchase {
 }
 
 export interface CreatePurchasePayload {
-  shop_id: number
-  shop_address_id: number
-  user_payment_method_id?: number | null
-  purchase_date: string
+  shopId: number
+  shopAddressId: number
+  userPaymentMethodId?: number | null
+  purchaseDate: string
   currency: string
   status?: PurchaseStatus
   notes?: string | null
-  receipt_number?: string | null
+  receiptNumber?: string | null
   lines: Array<{
-    line_number?: number
-    product_id?: number | null
+    lineNumber?: number
+    productId?: number | null
     description: string
     quantity: number
-    unit_price: number
-    tax_rate: number
-    discount_percent?: number | null
+    unitPrice: number
+    taxRate: number
+    discountPercent?: number | null
     notes?: string | null
   }>
 }

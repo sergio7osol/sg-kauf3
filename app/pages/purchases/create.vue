@@ -188,21 +188,21 @@ async function handleSubmit() {
 
   try {
     const payload = {
-      shop_id: selectedShopId.value!,
-      shop_address_id: selectedAddressId.value!,
-      user_payment_method_id: selectedPaymentMethodId.value,
-      purchase_date: purchaseDate.value,
+      shopId: selectedShopId.value!,
+      shopAddressId: selectedAddressId.value!,
+      userPaymentMethodId: selectedPaymentMethodId.value,
+      purchaseDate: purchaseDate.value,
       currency: currency.value,
       status: status.value,
       notes: notes.value || null,
-      receipt_number: receiptNumber.value || null,
+      receiptNumber: receiptNumber.value || null,
       lines: lines.value.map((line, index) => ({
-        line_number: index + 1,
+        lineNumber: index + 1,
         description: line.description.trim(),
         quantity: line.quantity,
-        unit_price: eurosToCents(line.unitPriceEuros),
-        tax_rate: line.taxRate,
-        discount_percent: line.discountPercent,
+        unitPrice: eurosToCents(line.unitPriceEuros),
+        taxRate: line.taxRate,
+        discountPercent: line.discountPercent,
         notes: line.notes || null
       }))
     }

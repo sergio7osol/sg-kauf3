@@ -93,13 +93,13 @@ const perPageOptions = [
 ]
 
 const filters = reactive({
-  shop_id: null as number | null,
-  date_from: null as string | null,
-  date_to: null as string | null,
+  shopId: null as number | null,
+  dateFrom: null as string | null,
+  dateTo: null as string | null,
   status: 'all' as PurchaseStatus | 'all',
-  include_lines: false,
+  includeLines: false,
   page: 1,
-  per_page: DEFAULT_PER_PAGE
+  perPage: DEFAULT_PER_PAGE
 })
 
 const statusOptions = [
@@ -124,7 +124,7 @@ onMounted(async () => {
   
   // Load purchases and aggregates on page load
   await Promise.all([
-    fetchPurchases({ per_page: filters.per_page, page: filters.page }).catch(err => console.error('Failed to load purchases on mount', err)),
+    fetchPurchases({ perPage: filters.perPage, page: filters.page }).catch(err => console.error('Failed to load purchases on mount', err)),
     fetchAggregates()
   ])
 })
@@ -132,27 +132,27 @@ onMounted(async () => {
 function buildFilterParams(): FetchPurchasesParams {
   const params: FetchPurchasesParams = {}
 
-  if (filters.shop_id) {
-    params.shop_id = filters.shop_id
+  if (filters.shopId) {
+    params.shopId = filters.shopId
   }
 
-  if (filters.date_from) {
-    params.date_from = filters.date_from
+  if (filters.dateFrom) {
+    params.dateFrom = filters.dateFrom
   }
 
-  if (filters.date_to) {
-    params.date_to = filters.date_to
+  if (filters.dateTo) {
+    params.dateTo = filters.dateTo
   }
 
   if (filters.status !== 'all') {
     params.status = filters.status as PurchaseStatus
   }
 
-  if (filters.include_lines) {
-    params.include_lines = true
+  if (filters.includeLines) {
+    params.includeLines = true
   }
 
-  params.per_page = filters.per_page
+  params.perPage = filters.perPage
   params.page = filters.page
 
   return params
@@ -166,12 +166,12 @@ async function fetchAggregates() {
   try {
     // Build base params (include lines for discount calculation)
     const baseParams: Record<string, unknown> = {}
-    if (filters.shop_id) baseParams.shop_id = filters.shop_id
-    if (filters.date_from) baseParams.date_from = filters.date_from
-    if (filters.date_to) baseParams.date_to = filters.date_to
+    if (filters.shopId) baseParams.shopId = filters.shopId
+    if (filters.dateFrom) baseParams.dateFrom = filters.dateFrom
+    if (filters.dateTo) baseParams.dateTo = filters.dateTo
     if (filters.status !== 'all') baseParams.status = filters.status
-    baseParams.per_page = 100 // Max allowed per request
-    baseParams.include_lines = 1 // Need lines to calculate discounts
+    baseParams.perPage = 100 // Max allowed per request
+    baseParams.includeLines = 1 // Need lines to calculate discounts
 
     // Fetch all pages to get complete data
     let allPurchases: any[] = []
@@ -188,27 +188,25 @@ async function fetchAggregates() {
       
       // Get pagination info from first request
       if (currentPage === 1 && response.data.meta) {
-        lastPage = response.data.meta.last_page || 1
+        lastPage = response.data.meta.lastPage || 1
       }
       
       currentPage++
     } while (currentPage <= lastPage)
 
-    // Calculate aggregates from raw API data (snake_case)
+    // Calculate aggregates from API data
     let totalSpent = 0
     let totalDiscount = 0
     let totalSubtotal = 0
 
     allPurchases.forEach((p: any) => {
-      // Handle both snake_case (raw API) and camelCase (transformed)
-      totalSpent += p.total_amount ?? p.totalAmount ?? 0
+      totalSpent += p.totalAmount ?? 0
       totalSubtotal += p.subtotal ?? 0
       
       // Calculate discount from line items
       const lines = p.lines || []
       lines.forEach((line: any) => {
-        const discountAmt = line.discount_amount ?? line.discountAmount ?? 0
-        totalDiscount += discountAmt
+        totalDiscount += line.discountAmount ?? 0
       })
     })
 
@@ -232,8 +230,8 @@ async function fetchAggregates() {
 }
 
 // Pagination computed properties
-const currentPage = computed(() => meta.value?.current_page ?? 1)
-const lastPage = computed(() => meta.value?.last_page ?? 1)
+const currentPage = computed(() => meta.value?.currentPage ?? 1)
+const lastPage = computed(() => meta.value?.lastPage ?? 1)
 const totalItems = computed(() => meta.value?.total ?? 0)
 const fromItem = computed(() => meta.value?.from ?? 0)
 const toItem = computed(() => meta.value?.to ?? 0)
@@ -257,13 +255,13 @@ function goToNextPage() {
 }
 
 async function handlePerPageChange(newPerPage: number) {
-  filters.per_page = newPerPage
-  filters.page = 1 // Reset to first page when changing per_page
+  filters.perPage = newPerPage
+  filters.page = 1 // Reset to first page when changing perPage
   await fetchPurchases(buildFilterParams())
 }
 
 const hasActiveFilters = computed(() => {
-  return Boolean(filters.shop_id || filters.date_from || filters.date_to || filters.include_lines || filters.status !== 'all')
+  return Boolean(filters.shopId || filters.dateFrom || filters.dateTo || filters.includeLines || filters.status !== 'all')
 })
 
 async function handleApplyFilters() {
@@ -276,15 +274,15 @@ async function handleApplyFilters() {
 }
 
 async function handleResetFilters() {
-  filters.shop_id = null
-  filters.date_from = null
-  filters.date_to = null
+  filters.shopId = null
+  filters.dateFrom = null
+  filters.dateTo = null
   filters.status = 'all'
-  filters.include_lines = false
+  filters.includeLines = false
   filters.page = 1
-  filters.per_page = DEFAULT_PER_PAGE
+  filters.perPage = DEFAULT_PER_PAGE
   await Promise.all([
-    fetchPurchases({ per_page: filters.per_page, page: filters.page }),
+    fetchPurchases({ perPage: filters.perPage, page: filters.page }),
     fetchAggregates()
   ])
 }
@@ -292,12 +290,13 @@ async function handleResetFilters() {
 // Table configuration
 interface PurchaseTableRow {
   id: number
-  purchase_date: string | null
-  shop_name: string
-  shop_address: string
-  payment_method: string
-  total_amount_value: number
-  total_amount_display: string
+  purchaseDateValue: number | null
+  purchaseDateDisplay: string | null
+  shopName: string
+  shopAddress: string
+  paymentMethod: string
+  totalAmountValue: number
+  totalAmountDisplay: string
   status: Purchase['status']
   _original: Purchase // Keep reference for expansion
 }
@@ -325,7 +324,7 @@ const purchaseToDelete = ref<Purchase | null>(null)
 
 // Sorting state for TanStack Table
 const sorting = ref([
-  { id: 'purchase_date', desc: true }
+  { id: 'purchaseDateValue', desc: true }
 ])
 
 const purchaseDateFormatter = new Intl.DateTimeFormat('de-DE', {
@@ -336,22 +335,23 @@ const purchaseDateFormatter = new Intl.DateTimeFormat('de-DE', {
 
 const tableColumns: TableColumn<PurchaseTableRow>[] = [
   { 
-    accessorKey: 'purchase_date', 
-    header: createSortableHeader('Date')
+    accessorKey: 'purchaseDateValue', 
+    header: createSortableHeader('Date'),
+    cell: ({ row }: any) => row.original.purchaseDateDisplay ?? '—'
   },
   { 
-    accessorKey: 'shop_name', 
+    accessorKey: 'shopName', 
     header: createSortableHeader('Shop')
   },
   { 
-    accessorKey: 'shop_address', 
+    accessorKey: 'shopAddress', 
     header: createSortableHeader('Address')
   },
   { 
-    accessorKey: 'payment_method', 
+    accessorKey: 'paymentMethod', 
     header: createSortableHeader('Payment'),
     cell: ({ row }: any) => {
-      const method = row.original.payment_method
+      const method = row.original.paymentMethod
       if (method === 'Not specified') {
         return h('span', { class: 'text-muted text-sm' }, method)
       }
@@ -359,13 +359,13 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
     }
   },
   { 
-    accessorKey: 'total_amount_value', 
+    accessorKey: 'totalAmountValue', 
     header: createSortableHeader('Total'),
     cell: ({ row }: any) => {
       const purchase = row.original._original
       const lineCount = purchase.lines?.length || 0
       return h('div', { class: 'flex items-center gap-2' }, [
-        h('span', {}, row.original.total_amount_display),
+        h('span', {}, row.original.totalAmountDisplay),
         lineCount > 0 ? h(UChip, { 
           size: 'sm',
           color: 'primary',
@@ -432,21 +432,31 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
 ]
 
 const tableRows = computed<PurchaseTableRow[]>(() => {
-  return purchases.value.map((purchase: Purchase) => ({
-    id: purchase.id,
-    purchase_date: (() => {
-      if (!purchase.purchaseDate) return null
+  return purchases.value.map((purchase: Purchase) => {
+    let purchaseDateValue: number | null = null
+    let purchaseDateDisplay: string | null = null
+
+    if (purchase.purchaseDate) {
       const parsed = new Date(purchase.purchaseDate)
-      return Number.isNaN(parsed.getTime()) ? null : purchaseDateFormatter.format(parsed)
-    })(),
-    shop_name: purchase.shop?.name ?? `Shop #${purchase.shopId ?? 'Unknown'}`,
-    shop_address: purchase.shopAddress ? `${purchase.shopAddress.city}, ${purchase.shopAddress.street} ${purchase.shopAddress.houseNumber}` : `Address #${purchase.shopAddressId ?? 'N/A'}`,
-    payment_method: purchase.userPaymentMethod?.name ?? 'Not specified',
-    total_amount_value: purchase.totalAmount ?? 0,
-    total_amount_display: `€${(purchase.totalAmount / 100).toFixed(2)}`,
-    status: purchase.status,
-    _original: purchase
-  }))
+      if (!Number.isNaN(parsed.getTime())) {
+        purchaseDateValue = parsed.getTime()
+        purchaseDateDisplay = purchaseDateFormatter.format(parsed)
+      }
+    }
+
+    return {
+      id: purchase.id,
+      purchaseDateValue,
+      purchaseDateDisplay,
+      shopName: purchase.shop?.name ?? `Shop #${purchase.shopId ?? 'Unknown'}`,
+      shopAddress: purchase.shopAddress ? `${purchase.shopAddress.city}, ${purchase.shopAddress.street} ${purchase.shopAddress.houseNumber}` : `Address #${purchase.shopAddressId ?? 'N/A'}`,
+      paymentMethod: purchase.userPaymentMethod?.name ?? 'Not specified',
+      totalAmountValue: purchase.totalAmount ?? 0,
+      totalAmountDisplay: `€${(purchase.totalAmount / 100).toFixed(2)}`,
+      status: purchase.status,
+      _original: purchase
+    }
+  })
 })
 </script>
 
@@ -469,17 +479,17 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
         <UDashboardToolbar>
           <template #left>
             <USelectMenu
-              v-model="filters.shop_id"
+              v-model="filters.shopId"
               :items="shopOptions"
               :loading="shopsLoading"
               value-key="value"
               placeholder="Select shop"
               class="min-w-[220px]"
             />
-            <UInput v-model="filters.date_from" type="date" placeholder="Date from" class="min-w-[150px]" />
-            <UInput v-model="filters.date_to" type="date" placeholder="Date to" class="min-w-[150px]" />
+            <UInput v-model="filters.dateFrom" type="date" placeholder="Date from" class="min-w-[150px]" />
+            <UInput v-model="filters.dateTo" type="date" placeholder="Date to" class="min-w-[150px]" />
             <USelectMenu v-model="filters.status" :items="statusOptions" value-key="value" class="min-w-[160px]" />
-            <USwitch v-model="filters.include_lines" label="Include lines" />
+            <USwitch v-model="filters.includeLines" label="Include lines" />
           </template>
 
           <template #right>
@@ -657,7 +667,7 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
               <div class="flex items-center gap-4">
                 <!-- Per-page selector -->
                 <USelectMenu
-                  :model-value="filters.per_page"
+                  :model-value="filters.perPage"
                   :items="perPageOptions"
                   value-key="value"
                   @update:model-value="handlePerPageChange"
