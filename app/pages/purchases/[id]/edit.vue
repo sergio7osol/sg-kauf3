@@ -54,6 +54,7 @@ interface LineItem {
   unitPriceEuros: number
   taxRate: number
   discountPercent: number | null
+  discountAmountEuros: number // Absolute discount in euros
   notes: string
 }
 
@@ -68,6 +69,7 @@ function createLineFromData(line: any, index: number): LineItem {
     unitPriceEuros: centsToEuros(line.unitPrice),
     taxRate: line.taxRate,
     discountPercent: line.discountPercent,
+    discountAmountEuros: centsToEuros(line.discountAmount ?? 0),
     notes: line.notes || ''
   }
 }
@@ -80,6 +82,7 @@ function createEmptyLine(): LineItem {
     unitPriceEuros: 0,
     taxRate: 0,
     discountPercent: null,
+    discountAmountEuros: 0,
     notes: ''
   }
 }
@@ -129,8 +132,14 @@ const statusOptions = [
 function calculateLineAmount(line: LineItem): number {
   const unitPriceCents = eurosToCents(line.unitPriceEuros)
   const subtotal = line.quantity * unitPriceCents
-  const discount = line.discountPercent ? subtotal * (line.discountPercent / 100) : 0
-  return Math.round(subtotal - discount)
+  const percentDiscount = line.discountPercent ? subtotal * (line.discountPercent / 100) : 0
+  const absoluteDiscount = eurosToCents(line.discountAmountEuros)
+  return Math.round(subtotal - percentDiscount - absoluteDiscount)
+}
+
+// Check if a line has any discount applied
+function lineHasDiscount(line: LineItem): boolean {
+  return (line.discountPercent != null && line.discountPercent > 0) || line.discountAmountEuros > 0
 }
 
 // Computed: Total amount
@@ -276,7 +285,8 @@ async function handleSubmit() {
         quantity: line.quantity,
         unitPrice: eurosToCents(line.unitPriceEuros),
         taxRate: line.taxRate,
-        discountPercent: line.discountPercent,
+        discountPercent: line.discountPercent ?? 0,
+        discountAmount: eurosToCents(line.discountAmountEuros),
         notes: line.notes || null
       }))
     }
@@ -539,15 +549,15 @@ function handleCancel() {
                   </UFormField>
                 </div>
 
-                <!-- Discount -->
+                <!-- Discount (Euros) -->
                 <div class="md:col-span-2">
-                  <UFormField label="Discount %">
+                  <UFormField label="Discount (€)">
                     <UInput
-                      v-model.number="line.discountPercent"
+                      v-model.number="line.discountAmountEuros"
                       type="number"
                       min="0"
-                      max="100"
-                      placeholder="0"
+                      step="0.01"
+                      placeholder="0.00"
                       class="w-full"
                     />
                   </UFormField>
@@ -556,7 +566,10 @@ function handleCancel() {
                 <!-- Line Amount -->
                 <div class="md:col-span-1 flex items-end">
                   <div class="text-right w-full pb-2">
-                    <span class="text-sm font-semibold">
+                    <span
+                      class="text-sm font-semibold"
+                      :class="{ 'text-green-600 dark:text-green-400': lineHasDiscount(line) }"
+                    >
                       {{ formatCents(calculateLineAmount(line)) }}
                     </span>
                   </div>

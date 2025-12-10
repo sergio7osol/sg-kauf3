@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { usePurchases } from '~/composables/usePurchases'
+import { formatCents } from '~/utils/money'
+import type { PurchaseLine } from '~/types'
 
 definePageMeta({
   middleware: ['auth']
@@ -51,6 +53,20 @@ const formattedDate = computed(() => {
     day: 'numeric'
   })
 })
+
+function lineHasDiscount(line: PurchaseLine): boolean {
+  return (line.discountPercent ?? 0) > 0 || (line.discountAmount ?? 0) > 0
+}
+
+function formatLineDiscount(line: PurchaseLine): string {
+  if ((line.discountAmount ?? 0) > 0) {
+    return formatCents(line.discountAmount!)
+  }
+  if ((line.discountPercent ?? 0) > 0) {
+    return `${line.discountPercent}%`
+  }
+  return '—'
+}
 
 // Delete handler
 async function handleDelete() {
@@ -244,13 +260,15 @@ async function handleDelete() {
                       </div>
                     </td>
                     <td class="py-3 pr-4 text-right">{{ line.quantity }}</td>
-                    <td class="py-3 pr-4 text-right">€{{ (line.unitPrice / 100).toFixed(2) }}</td>
+                    <td class="py-3 pr-4 text-right">{{ formatCents(line.unitPrice) }}</td>
                     <td class="py-3 pr-4 text-right">{{ line.taxRate }}%</td>
                     <td class="py-3 pr-4 text-right">
-                      {{ line.discountPercent ? `${line.discountPercent}%` : '—' }}
+                      {{ formatLineDiscount(line) }}
                     </td>
                     <td class="py-3 text-right font-medium">
-                      €{{ (line.lineAmount / 100).toFixed(2) }}
+                      <span :class="{ 'text-green-600 dark:text-green-400': lineHasDiscount(line) }">
+                        {{ formatCents(line.lineAmount) }}
+                      </span>
                     </td>
                   </tr>
                 </tbody>
@@ -272,15 +290,15 @@ async function handleDelete() {
             <dl class="space-y-3">
               <div class="flex justify-between text-sm">
                 <dt class="text-muted">Subtotal</dt>
-                <dd class="font-medium">€{{ (purchase.subtotal / 100).toFixed(2) }}</dd>
+                <dd class="font-medium">{{ formatCents(purchase.subtotal) }}</dd>
               </div>
               <div class="flex justify-between text-sm">
                 <dt class="text-muted">Tax</dt>
-                <dd class="font-medium">€{{ (purchase.taxAmount / 100).toFixed(2) }}</dd>
+                <dd class="font-medium">{{ formatCents(purchase.taxAmount) }}</dd>
               </div>
               <div class="flex justify-between text-lg font-semibold pt-3 border-t border-default">
                 <dt>Total</dt>
-                <dd>€{{ (purchase.totalAmount / 100).toFixed(2) }}</dd>
+                <dd>{{ formatCents(purchase.totalAmount) }}</dd>
               </div>
             </dl>
           </UCard>
@@ -321,7 +339,7 @@ async function handleDelete() {
               </div>
               <div class="flex justify-between">
                 <dt class="text-muted">Total:</dt>
-                <dd class="font-medium">€{{ (purchase.totalAmount / 100).toFixed(2) }}</dd>
+                <dd class="font-medium">{{ formatCents(purchase.totalAmount) }}</dd>
               </div>
             </dl>
           </div>

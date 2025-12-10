@@ -29,9 +29,7 @@
   opacity: 0.5;
   box-shadow: none;
   text-shadow: none;
-  background-color: #ddd;
-  color: #999;
-  border-color: #ddd;
+  border: 1px solid #ddd;
   border-radius: .5rem;
   cursor: not-allowed;
 }

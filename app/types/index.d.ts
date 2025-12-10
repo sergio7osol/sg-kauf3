@@ -166,3 +166,58 @@ export interface CreatePurchasePayload {
     notes?: string | null
   }>
 }
+
+// Receipt Parsing Types
+export type ReceiptConfidence = 'high' | 'medium' | 'low'
+
+export interface ParsedReceiptItem {
+  name: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  totalPrice: number
+  isDiscount: boolean
+  confidence: ReceiptConfidence
+  warning: string | null
+  /** Price in cents to submit (0 for discount lines) */
+  submitUnitPrice: number
+  /** Discount amount in cents to submit (actual discount for discount lines, 0 for regular items) */
+  submitDiscountAmount: number
+}
+
+export interface ParsedReceiptShop {
+  name: string
+  id: number | null
+}
+
+export interface ParsedReceiptAddress {
+  display: string
+  id: number | null
+}
+
+export interface ParsedReceiptData {
+  shop: ParsedReceiptShop
+  address: ParsedReceiptAddress
+  purchaseDate: string
+  purchaseTime: string | null
+  currency: string
+  subtotal: number
+  total: number
+  items: ParsedReceiptItem[]
+}
+
+export interface ReceiptParseResponse {
+  success: boolean
+  data: ParsedReceiptData | null
+  warnings: string[]
+  confidence: ReceiptConfidence
+  error?: string
+  debug?: {
+    eventSummary: Record<string, number>
+    events: unknown[]
+  }
+}
+
+export interface SupportedShopsResponse {
+  data: string[]
+}

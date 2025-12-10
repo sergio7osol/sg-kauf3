@@ -5,7 +5,7 @@ import { usePurchases } from '~/composables/usePurchases'
 import { useShops } from '~/composables/useShops'
 import { useUserPaymentMethods } from '~/composables/useUserPaymentMethods'
 import { eurosToCents, centsToEuros, formatCents } from '~/utils/money'
-import type { Shop, ShopAddress, PurchaseStatus } from '~/types'
+import type { Shop, ShopAddress, PurchaseStatus, ParsedReceiptData } from '~/types'
 
 definePageMeta({
   middleware: ['auth']
@@ -33,6 +33,12 @@ const breadcrumbs = [
 // Form state
 const isSubmitting = ref(false)
 
+// Receipt upload modal state
+const receiptModalOpen = ref(false)
+const wasImportedFromReceipt = ref(false)
+const importWarnings = ref<string[]>([])
+const importedAddressLabel = ref<string | null>(null)
+
 // Purchase header state
 const selectedShopId = ref<number | null>(null)
 const selectedAddressId = ref<number | null>(null)
@@ -51,6 +57,7 @@ interface LineItem {
   unitPriceEuros: number // User inputs euros, we convert
   taxRate: number
   discountPercent: number | null
+  discountAmountEuros: number // Absolute discount in euros (used for receipt discounts)
   notes: string
 }
 
@@ -66,6 +73,7 @@ function createEmptyLine(): LineItem {
     unitPriceEuros: 0,
     taxRate: 0, // German prices include tax, so we use 0
     discountPercent: null,
+    discountAmountEuros: 0,
     notes: ''
   }
 }
@@ -89,10 +97,20 @@ const shopOptions = computed(() => {
 
 // Computed: Address options for dropdown
 const addressOptions = computed(() => {
-  return availableAddresses.value.map((a: ShopAddress) => ({
+  const baseOptions = availableAddresses.value.map((a: ShopAddress) => ({
     label: `${a.street} ${a.houseNumber}, ${a.postalCode} ${a.city}`,
     value: a.id
   }))
+
+  const hasSelectedAddress = baseOptions.some(option => option.value === selectedAddressId.value)
+  if (!hasSelectedAddress && selectedAddressId.value && importedAddressLabel.value) {
+    baseOptions.unshift({
+      label: importedAddressLabel.value,
+      value: selectedAddressId.value
+    })
+  }
+
+  return baseOptions
 })
 
 // Computed: Payment method options for dropdown
@@ -115,8 +133,14 @@ const statusOptions = [
 function calculateLineAmount(line: LineItem): number {
   const unitPriceCents = eurosToCents(line.unitPriceEuros)
   const subtotal = line.quantity * unitPriceCents
-  const discount = line.discountPercent ? subtotal * (line.discountPercent / 100) : 0
-  return Math.round(subtotal - discount)
+  const percentDiscount = line.discountPercent ? subtotal * (line.discountPercent / 100) : 0
+  const absoluteDiscount = eurosToCents(line.discountAmountEuros)
+  return Math.round(subtotal - percentDiscount - absoluteDiscount)
+}
+
+// Check if a line has any discount applied
+function lineHasDiscount(line: LineItem): boolean {
+  return (line.discountPercent != null && line.discountPercent > 0) || line.discountAmountEuros > 0
 }
 
 // Computed: Total amount
@@ -138,6 +162,7 @@ const isFormValid = computed(() => {
 // Watch: Reset address when shop changes
 watch(selectedShopId, (newShopId) => {
   selectedAddressId.value = null
+  importedAddressLabel.value = null
   // Auto-select first address if only one
   if (newShopId) {
     const addresses = availableAddresses.value
@@ -202,7 +227,8 @@ async function handleSubmit() {
         quantity: line.quantity,
         unitPrice: eurosToCents(line.unitPriceEuros),
         taxRate: line.taxRate,
-        discountPercent: line.discountPercent,
+        discountPercent: line.discountPercent ?? 0,
+        discountAmount: eurosToCents(line.discountAmountEuros),
         notes: line.notes || null
       }))
     }
@@ -242,6 +268,71 @@ async function handleSubmit() {
 function handleCancel() {
   router.push('/purchases')
 }
+
+/**
+ * Apply parsed receipt data to the form.
+ * Maps the parsed data to form fields and line items.
+ */
+function applyParsedReceipt(data: ParsedReceiptData) {
+  // Set shop if matched
+  if (data.shop.id) {
+    selectedShopId.value = data.shop.id
+    // Address will be set after shop changes trigger availableAddresses update
+    nextTick(() => {
+      if (data.address.id) {
+        selectedAddressId.value = data.address.id
+        importedAddressLabel.value = data.address.display ?? null
+      }
+    })
+  } else {
+    importedAddressLabel.value = null
+  }
+
+  // Set purchase date
+  if (data.purchaseDate) {
+    purchaseDate.value = data.purchaseDate
+  }
+
+  // Set notes with time if available
+  if (data.purchaseTime) {
+    notes.value = `Purchase time: ${data.purchaseTime}${notes.value ? '\n' + notes.value : ''}`
+  }
+
+  // Set currency
+  if (data.currency) {
+    currency.value = data.currency
+  }
+
+  // Map items to line items
+  if (data.items && data.items.length > 0) {
+    lines.value = data.items.map((item) => ({
+      id: crypto.randomUUID(),
+      description: item.name,
+      quantity: item.quantity,
+      unitPriceEuros: centsToEuros(item.submitUnitPrice), // Convert cents to euros for display
+      taxRate: 0, // German prices include tax
+      discountPercent: null,
+      discountAmountEuros: centsToEuros(item.submitDiscountAmount), // Convert cents to euros
+      notes: item.isDiscount ? 'Discount/Rabatt' : ''
+    }))
+  }
+
+  // Track that form was imported
+  wasImportedFromReceipt.value = true
+
+  // Collect warnings for display
+  const warnings: string[] = []
+  if (!data.shop.id) {
+    warnings.push(`Shop "${data.shop.name}" was not matched - please select manually`)
+  }
+  if (!data.address.id) {
+    warnings.push(`Address "${data.address.display}" was not matched - please select manually`)
+  } else {
+    importedAddressLabel.value = data.address.display
+  }
+  warnings.push('Payment method was not detected - please select manually')
+  importWarnings.value = warnings
+}
 </script>
 
 <template>
@@ -250,11 +341,17 @@ function handleCancel() {
       <UDashboardNavbar title="New Purchase" :links="breadcrumbs">
         <template #right>
           <div class="flex gap-2">
+            <!-- Receipt Upload Modal -->
+            <PurchasesReceiptUploadModal
+              v-model:open="receiptModalOpen"
+              @parsed="applyParsedReceipt"
+            />
             <UButton
               color="neutral"
               variant="outline"
               icon="i-lucide-x"
               label="Cancel"
+              class="btn-standard"
               @click="handleCancel"
             />
             <UButton
@@ -263,6 +360,7 @@ function handleCancel() {
               label="Save Purchase"
               :loading="isSubmitting"
               :disabled="!isFormValid"
+              class="btn-standard"
               @click="handleSubmit"
             />
           </div>
@@ -272,6 +370,35 @@ function handleCancel() {
 
     <template #body>
       <div class="p-4 space-y-6 max-w-4xl mx-auto">
+        <!-- Import Warnings Banner -->
+        <UAlert
+          v-if="wasImportedFromReceipt && importWarnings.length > 0"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-alert-triangle"
+          title="Receipt Imported - Review Required"
+          :close-button="{ icon: 'i-lucide-x', color: 'warning', variant: 'link', padded: false }"
+          @close="wasImportedFromReceipt = false"
+        >
+          <template #description>
+            <ul class="list-disc list-inside space-y-1 mt-1">
+              <li v-for="(warning, idx) in importWarnings" :key="idx">{{ warning }}</li>
+            </ul>
+          </template>
+        </UAlert>
+
+        <!-- Import Success Banner -->
+        <UAlert
+          v-else-if="wasImportedFromReceipt"
+          color="success"
+          variant="subtle"
+          icon="i-lucide-check-circle"
+          title="Receipt Imported Successfully"
+          description="Form has been pre-filled with receipt data. Please review and adjust if needed."
+          :close-button="{ icon: 'i-lucide-x', color: 'success', variant: 'link', padded: false }"
+          @close="wasImportedFromReceipt = false"
+        />
+
         <!-- Purchase Details Card -->
         <UCard>
           <template #header>
@@ -448,15 +575,15 @@ function handleCancel() {
                   </UFormField>
                 </div>
 
-                <!-- Discount -->
+                <!-- Discount (Euros) -->
                 <div class="md:col-span-2">
-                  <UFormField label="Discount %">
+                  <UFormField label="Discount (€)">
                     <UInput
-                      v-model.number="line.discountPercent"
+                      v-model.number="line.discountAmountEuros"
                       type="number"
                       min="0"
-                      max="100"
-                      placeholder="0"
+                      step="0.01"
+                      placeholder="0.00"
                       class="w-full"
                     />
                   </UFormField>
@@ -465,7 +592,10 @@ function handleCancel() {
                 <!-- Line Amount -->
                 <div class="md:col-span-1 flex items-end">
                   <div class="text-right w-full pb-2">
-                    <span class="text-sm font-semibold">
+                    <span
+                      class="text-sm font-semibold"
+                      :class="{ 'text-green-600 dark:text-green-400': lineHasDiscount(line) }"
+                    >
                       {{ formatCents(calculateLineAmount(line)) }}
                     </span>
                   </div>
