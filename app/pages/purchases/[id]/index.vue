@@ -54,6 +54,20 @@ const formattedDate = computed(() => {
   })
 })
 
+const formattedTime = computed(() => {
+  const time = purchase.value?.purchaseTime
+  if (!time) return '—'
+  const trimmed = time.trim()
+  return trimmed.length >= 5 ? trimmed.slice(0, 5) : trimmed
+})
+
+const totalDiscount = computed(() => {
+  if (!purchase.value?.lines?.length) return 0
+  return purchase.value.lines.reduce((sum, line) => {
+    return sum + (line.discountAmount ?? 0)
+  }, 0)
+})
+
 function lineHasDiscount(line: PurchaseLine): boolean {
   return (line.discountPercent ?? 0) > 0 || (line.discountAmount ?? 0) > 0
 }
@@ -100,6 +114,7 @@ async function handleDelete() {
     isDeleteModalOpen.value = false
   }
 }
+
 </script>
 
 <template>
@@ -170,6 +185,10 @@ async function handleDelete() {
                     <dd class="text-sm font-medium">{{ formattedDate }}</dd>
                   </div>
                   <div class="flex justify-between">
+                    <dt class="text-sm text-muted">Time</dt>
+                    <dd class="text-sm font-medium">{{ formattedTime }}</dd>
+                  </div>
+                  <div class="flex justify-between">
                     <dt class="text-sm text-muted">Status</dt>
                     <dd>
                       <UBadge :color="statusColor.badge" variant="subtle" class="capitalize">
@@ -206,7 +225,7 @@ async function handleDelete() {
                   <div v-if="purchase.shopAddress" class="flex justify-between">
                     <dt class="text-sm text-muted">Address</dt>
                     <dd class="text-sm font-medium text-right">
-                      {{ purchase.shopAddress.street }}<br>
+                      {{ purchase.shopAddress.street }} {{ purchase.shopAddress.houseNumber }}<br>
                       {{ purchase.shopAddress.city }}, {{ purchase.shopAddress.postalCode }}
                     </dd>
                   </div>
@@ -222,6 +241,27 @@ async function handleDelete() {
               <h3 class="text-sm font-medium text-muted mb-2">Notes</h3>
               <p class="text-sm text-default">{{ purchase.notes }}</p>
             </div>
+
+            <!-- Totals Summary -->
+            <dl class="space-y-3">
+              <div class="flex justify-between text-sm">
+                <dt class="text-muted">Subtotal</dt>
+                <dd class="font-medium">{{ formatCents(purchase.subtotal) }}</dd>
+              </div>
+              <div class="flex justify-between text-sm">
+                <dt class="text-muted">Discount</dt>
+                <dd class="font-medium">
+                  <span v-if="totalDiscount > 0" class="text-green-600 dark:text-green-400">
+                    - {{ formatCents(totalDiscount) }}
+                  </span>
+                  <span v-else>—</span>
+                </dd>
+              </div>
+              <div class="flex justify-between text-lg font-semibold pt-3 border-t border-default">
+                <dt>Total</dt>
+                <dd>{{ formatCents(purchase.totalAmount) }}</dd>
+              </div>
+            </dl>
           </UCard>
 
           <!-- Line Items -->
@@ -281,27 +321,7 @@ async function handleDelete() {
             </div>
           </UCard>
 
-          <!-- Totals Summary -->
-          <UCard>
-            <template #header>
-              <h3 class="text-lg font-semibold">Summary</h3>
-            </template>
-
-            <dl class="space-y-3">
-              <div class="flex justify-between text-sm">
-                <dt class="text-muted">Subtotal</dt>
-                <dd class="font-medium">{{ formatCents(purchase.subtotal) }}</dd>
-              </div>
-              <div class="flex justify-between text-sm">
-                <dt class="text-muted">Tax</dt>
-                <dd class="font-medium">{{ formatCents(purchase.taxAmount) }}</dd>
-              </div>
-              <div class="flex justify-between text-lg font-semibold pt-3 border-t border-default">
-                <dt>Total</dt>
-                <dd>{{ formatCents(purchase.totalAmount) }}</dd>
-              </div>
-            </dl>
-          </UCard>
+          
         </template>
       </div>
     </template>

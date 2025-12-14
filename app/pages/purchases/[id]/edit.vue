@@ -41,6 +41,7 @@ const selectedShopId = ref<number | null>(null)
 const selectedAddressId = ref<number | null>(null)
 const selectedPaymentMethodId = ref<number | null>(null)
 const purchaseDate = ref('')
+const purchaseTime = ref<string | null>(null)
 const currency = ref('EUR')
 const status = ref<PurchaseStatus>('confirmed')
 const notes = ref('')
@@ -142,6 +143,19 @@ function lineHasDiscount(line: LineItem): boolean {
   return (line.discountPercent != null && line.discountPercent > 0) || line.discountAmountEuros > 0
 }
 
+function normalizeTimeForInput(time: string | null): string | null {
+  if (!time) return null
+  const trimmed = time.trim()
+  if (!trimmed) return null
+  return trimmed.length >= 5 ? trimmed.slice(0, 5) : trimmed
+}
+
+function normalizeTimeForSubmit(time: string | null): string | null {
+  if (!time) return null
+  const trimmed = time.trim()
+  return trimmed ? trimmed : null
+}
+
 // Computed: Total amount
 const totalAmountCents = computed(() => {
   return lines.value.reduce((sum, line) => sum + calculateLineAmount(line), 0)
@@ -219,6 +233,7 @@ onMounted(async () => {
       selectedAddressId.value = purchase.value.shopAddressId
       selectedPaymentMethodId.value = purchase.value.userPaymentMethodId ?? null
       purchaseDate.value = purchase.value.purchaseDate
+      purchaseTime.value = normalizeTimeForInput(purchase.value.purchaseTime ?? null)
       currency.value = purchase.value.currency
       status.value = purchase.value.status
       notes.value = purchase.value.notes || ''
@@ -271,6 +286,7 @@ async function handleSubmit() {
       shopAddressId: selectedAddressId.value!,
       userPaymentMethodId: selectedPaymentMethodId.value,
       purchaseDate: purchaseDate.value,
+      purchaseTime: normalizeTimeForSubmit(purchaseTime.value),
       currency: currency.value,
       status: status.value,
       notes: notes.value || null,
@@ -407,15 +423,26 @@ function handleCancel() {
               </template>
             </UFormField>
 
-            <!-- Purchase Date -->
-            <UFormField label="Date" required>
-              <UInput
-                v-model="purchaseDate"
-                type="date"
-                :max="new Date().toISOString().split('T')[0]"
-                class="w-full"
-              />
-            </UFormField>
+            <!-- Purchase Date + Time -->
+            <div class="md:col-span-2 grid gap-4 md:grid-cols-2">
+              <UFormField label="Date" required>
+                <UInput
+                  v-model="purchaseDate"
+                  type="date"
+                  :max="new Date().toISOString().split('T')[0]"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField label="Time">
+                <UInput
+                  v-model="purchaseTime"
+                  type="time"
+                  step="60"
+                  class="w-full"
+                />
+              </UFormField>
+            </div>
 
             <!-- Payment Method -->
             <UFormField label="Payment Method">

@@ -131,6 +131,7 @@ export interface Purchase {
   shopAddressId: number
   userPaymentMethodId?: number | null
   purchaseDate: string
+  purchaseTime?: string | null
   currency: string
   status: PurchaseStatus
   subtotal: number
@@ -151,6 +152,7 @@ export interface CreatePurchasePayload {
   shopAddressId: number
   userPaymentMethodId?: number | null
   purchaseDate: string
+  purchaseTime?: string | null
   currency: string
   status?: PurchaseStatus
   notes?: string | null
@@ -163,6 +165,7 @@ export interface CreatePurchasePayload {
     unitPrice: number
     taxRate: number
     discountPercent?: number | null
+    discountAmount?: number | null
     notes?: string | null
   }>
 }
