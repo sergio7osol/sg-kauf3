@@ -1,26 +1,25 @@
 <script setup lang="ts">
-import { useReceiptParser } from '~/composables/useReceiptParser'
-import type { ParsedReceiptData } from '~/types'
+import { useReceiptParser } from '~/composables/useReceiptParser';
+import type { ParsedReceiptData } from '~/types';
 
 // Props & Events
 const props = defineProps<{
   open: boolean
-}>()
+}>();
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
   (e: 'parsed', data: ParsedReceiptData): void
-}>()
+}>();
 
 // Modal state
 const isOpen = computed({
   get: () => props.open,
-  set: (value) => emit('update:open', value)
-})
+  set: value => emit('update:open', value)
+});
 
 // Receipt parser composable
 const {
-  isUploading,
   isParsing,
   parseError,
   parseWarnings,
@@ -32,99 +31,99 @@ const {
   allowedFileTypes,
   maxFileSizeMB,
   supportedShops
-} = useReceiptParser()
+} = useReceiptParser();
 
 // Local state
-const selectedFile = ref<File | null>(null)
-const localError = ref<string | null>(null)
-const showPreview = ref(false)
-const parsedResult = ref<ParsedReceiptData | null>(null)
+const selectedFile = ref<File | null>(null);
+const localError = ref<string | null>(null);
+const showPreview = ref(false);
+const parsedResult = ref<ParsedReceiptData | null>(null);
 
 // Toast for notifications
-const toast = useToast()
+const toast = useToast();
 
 // Fetch supported shops when modal opens
 watch(isOpen, async (newVal) => {
   if (newVal) {
-    resetState()
-    selectedFile.value = null
-    localError.value = null
-    showPreview.value = false
-    parsedResult.value = null
-    await fetchSupportedShops()
+    resetState();
+    selectedFile.value = null;
+    localError.value = null;
+    showPreview.value = false;
+    parsedResult.value = null;
+    await fetchSupportedShops();
   }
-})
+});
 
 // Handle file selection from UFileUpload
 function handleFileChange(file: File | File[] | null) {
-  localError.value = null
-  
+  localError.value = null;
+
   if (!file) {
-    selectedFile.value = null
-    return
+    selectedFile.value = null;
+    return;
   }
-  
+
   // UFileUpload can return array if multiple, but we use single file
-  const singleFile = Array.isArray(file) ? file[0] : file
-  
+  const singleFile = Array.isArray(file) ? file[0] : file;
+
   if (!singleFile) {
-    selectedFile.value = null
-    return
+    selectedFile.value = null;
+    return;
   }
-  
+
   // Validate file
-  const validation = validateFile(singleFile)
+  const validation = validateFile(singleFile);
   if (!validation.valid) {
-    localError.value = validation.error || 'Invalid file'
-    selectedFile.value = null
-    return
+    localError.value = validation.error || 'Invalid file';
+    selectedFile.value = null;
+    return;
   }
-  
-  selectedFile.value = singleFile
+
+  selectedFile.value = singleFile;
 }
 
 // Upload and parse the receipt
 async function handleUpload() {
   if (!selectedFile.value) {
-    localError.value = 'Please select a file first'
-    return
+    localError.value = 'Please select a file first';
+    return;
   }
-  
-  const result = await parseReceipt(selectedFile.value)
-  
+
+  const result = await parseReceipt(selectedFile.value);
+
   if (result) {
-    parsedResult.value = result
-    showPreview.value = true
+    parsedResult.value = result;
+    showPreview.value = true;
   }
 }
 
 // Confirm and apply parsed data
 function handleApply() {
-  if (!parsedResult.value) return
-  
-  emit('parsed', parsedResult.value)
-  
+  if (!parsedResult.value) return;
+
+  emit('parsed', parsedResult.value);
+
   toast.add({
     title: 'Receipt Imported',
     description: 'Form has been pre-filled with receipt data. Please review and adjust if needed.',
     icon: 'i-lucide-check',
     color: 'success'
-  })
-  
-  isOpen.value = false
+  });
+
+  isOpen.value = false;
 }
 
 // Cancel and close
 function handleCancel() {
-  resetState()
-  isOpen.value = false
+  resetState();
+  isOpen.value = false;
 }
 
 // Go back to upload step
 function handleBack() {
-  showPreview.value = false
-  parsedResult.value = null
-  resetState()
+  showPreview.value = false;
+  parsedResult.value = null;
+  resetState();
 }
 
 // Format currency for display
@@ -132,7 +131,7 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('de-DE', {
     style: 'currency',
     currency: 'EUR'
-  }).format(value)
+  }).format(value);
 }
 </script>
 
@@ -153,7 +152,10 @@ function formatCurrency(value: number): string {
 
     <template #body>
       <!-- Upload Step -->
-      <div v-if="!showPreview" class="space-y-4">
+      <div
+        v-if="!showPreview"
+        class="space-y-4"
+      >
         <!-- Supported shops info -->
         <UAlert
           v-if="supportedShops.length > 0"
@@ -217,7 +219,10 @@ function formatCurrency(value: number): string {
       </div>
 
       <!-- Preview Step -->
-      <div v-else-if="parsedResult" class="space-y-4">
+      <div
+        v-else-if="parsedResult"
+        class="space-y-4"
+      >
         <!-- Confidence indicator -->
         <UAlert
           :color="confidence === 'high' ? 'success' : confidence === 'medium' ? 'warning' : 'error'"
@@ -243,9 +248,13 @@ function formatCurrency(value: number): string {
           <div class="p-3 bg-elevated/30">
             <div class="grid gap-2 md:grid-cols-2">
               <div>
-                <span class="text-xs text-muted uppercase tracking-wide">Shop</span>
+                <span class="text-xs text-muted uppercase tracking-wide">
+                  Shop
+                </span>
                 <div class="flex items-center gap-2">
-                  <span class="font-medium">{{ parsedResult.shop.name }}</span>
+                  <span class="font-medium">
+                    {{ parsedResult.shop.name }}
+                  </span>
                   <UBadge
                     v-if="parsedResult.shop.id"
                     color="success"
@@ -265,9 +274,13 @@ function formatCurrency(value: number): string {
                 </div>
               </div>
               <div>
-                <span class="text-xs text-muted uppercase tracking-wide">Address</span>
+                <span class="text-xs text-muted uppercase tracking-wide">
+                  Address
+                </span>
                 <div class="flex items-center gap-2">
-                  <span class="font-medium text-sm">{{ parsedResult.address.display }}</span>
+                  <span class="font-medium text-sm">
+                    {{ parsedResult.address.display }}
+                  </span>
                   <UBadge
                     v-if="parsedResult.address.id"
                     color="success"
@@ -293,12 +306,22 @@ function formatCurrency(value: number): string {
           <div class="p-3">
             <div class="grid gap-2 md:grid-cols-2">
               <div>
-                <span class="text-xs text-muted uppercase tracking-wide">Date</span>
-                <div class="font-medium">{{ parsedResult.purchaseDate }}</div>
+                <span class="text-xs text-muted uppercase tracking-wide">
+                  Date
+                </span>
+                <div class="font-medium">
+                  {{ parsedResult.purchaseDate }}
+                </div>
               </div>
-              <div v-if="parsedResult.purchaseTime">
-                <span class="text-xs text-muted uppercase tracking-wide">Time</span>
-                <div class="font-medium">{{ parsedResult.purchaseTime }}</div>
+              <div
+                v-if="parsedResult.purchaseTime"
+              >
+                <span class="text-xs text-muted uppercase tracking-wide">
+                  Time
+                </span>
+                <div class="font-medium">
+                  {{ parsedResult.purchaseTime }}
+                </div>
               </div>
             </div>
           </div>
@@ -306,8 +329,12 @@ function formatCurrency(value: number): string {
           <!-- Items preview -->
           <div class="p-3">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-xs text-muted uppercase tracking-wide">Items</span>
-              <span class="text-sm text-muted">{{ parsedResult.items.length }} item(s)</span>
+              <span class="text-xs text-muted uppercase tracking-wide">
+                Items
+              </span>
+              <span class="text-sm text-muted">
+                {{ parsedResult.items.length }} item(s)
+              </span>
             </div>
             <div class="max-h-48 overflow-y-auto space-y-1">
               <div
@@ -323,7 +350,12 @@ function formatCurrency(value: number): string {
                     class="w-4 h-4 flex-shrink-0"
                   />
                   <span class="truncate">{{ item.name }}</span>
-                  <span v-if="item.quantity > 1" class="text-muted">× {{ item.quantity }}</span>
+                  <span
+                    v-if="item.quantity > 1"
+                    class="text-muted"
+                  >
+                    × {{ item.quantity }}
+                  </span>
                 </div>
                 <span class="font-medium flex-shrink-0 ml-2">
                   {{ formatCurrency(item.totalPrice) }}
@@ -335,8 +367,12 @@ function formatCurrency(value: number): string {
           <!-- Total -->
           <div class="p-3 bg-elevated/30">
             <div class="flex items-center justify-between">
-              <span class="font-semibold">Total</span>
-              <span class="text-lg font-bold">{{ formatCurrency(parsedResult.total) }}</span>
+              <span class="font-semibold">
+                Total
+              </span>
+              <span class="text-lg font-bold">
+                {{ formatCurrency(parsedResult.total) }}
+              </span>
             </div>
           </div>
         </div>
