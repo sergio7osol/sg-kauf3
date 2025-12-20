@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useHead } from 'nuxt/app'
+import { useHead } from 'nuxt/app';
 
-const colorMode = useColorMode()
-const color = computed(() => colorMode.value === 'dark' ? '#1b1718' : 'white')
+const colorMode = useColorMode();
+const color = computed(() => colorMode.value === 'dark' ? '#1b1718' : 'white');
 
 useHead({
   title: 'SG-Kauf',
@@ -22,10 +22,10 @@ useHead({
   htmlAttrs: {
     lang: 'en'
   }
-})
+});
 
-const title = 'SG-Kauf app'
-const description = 'Personal money tracking app'
+const title = 'SG-Kauf app';
+const description = 'Personal money tracking app';
 
 useSeoMeta({
   title,
@@ -35,7 +35,7 @@ useSeoMeta({
   ogImage: '/logo.png',
   twitterImage: '/logo.png',
   twitterCard: 'summary_large_image'
-})
+});
 </script>
 
 <template>
