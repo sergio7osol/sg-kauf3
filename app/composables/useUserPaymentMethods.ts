@@ -8,7 +8,7 @@ import type { UserPaymentMethod } from '~/types'
 export interface CreatePaymentMethodPayload {
   name: string                    // required, max 100 chars, unique per user
   notes?: string | null           // optional, max 1000 chars
-  is_active?: boolean             // optional, default true
+  isActive?: boolean              // optional, default true
 }
 
 /**
@@ -18,7 +18,7 @@ export interface CreatePaymentMethodPayload {
 export interface UpdatePaymentMethodPayload {
   name?: string                   // optional, max 100 chars, unique per user
   notes?: string | null           // optional, max 1000 chars
-  is_active?: boolean             // optional, set false to "retire"
+  isActive?: boolean              // optional, set false to "retire"
 }
 
 /**
@@ -64,7 +64,7 @@ export const useUserPaymentMethods = () => {
    * Useful for dropdowns where archived methods should be hidden
    */
   const activePaymentMethods = computed(() => 
-    paymentMethods.value.filter(pm => pm.isActive)
+    paymentMethods.value.filter((pm: UserPaymentMethod) => pm.isActive)
   )
 
   /**
@@ -72,7 +72,7 @@ export const useUserPaymentMethods = () => {
    * Useful for showing archived section separately
    */
   const archivedPaymentMethods = computed(() => 
-    paymentMethods.value.filter(pm => !pm.isActive)
+    paymentMethods.value.filter((pm: UserPaymentMethod) => !pm.isActive)
   )
 
   /**
@@ -166,7 +166,7 @@ export const useUserPaymentMethods = () => {
       
       // Update local state to avoid refetch
       if (data.data) {
-        const index = paymentMethods.value.findIndex(pm => pm.id === Number(id))
+        const index = paymentMethods.value.findIndex((pm: UserPaymentMethod) => pm.id === Number(id))
         if (index !== -1) {
           paymentMethods.value[index] = data.data
         }
@@ -189,7 +189,7 @@ export const useUserPaymentMethods = () => {
    * @param id - Payment method ID
    */
   async function archivePaymentMethod(id: number | string) {
-    return updatePaymentMethod(id, { is_active: false })
+    return updatePaymentMethod(id, { isActive: false })
   }
 
   /**
@@ -197,7 +197,7 @@ export const useUserPaymentMethods = () => {
    * @param id - Payment method ID
    */
   async function restorePaymentMethod(id: number | string) {
-    return updatePaymentMethod(id, { is_active: true })
+    return updatePaymentMethod(id, { isActive: true })
   }
 
   /**
@@ -210,7 +210,7 @@ export const useUserPaymentMethods = () => {
       const { data } = await axios.delete<DeleteResponse>(`/user-payment-methods/${id}`)
       
       // Remove from local state
-      paymentMethods.value = paymentMethods.value.filter(pm => pm.id !== Number(id))
+      paymentMethods.value = paymentMethods.value.filter((pm: UserPaymentMethod) => pm.id !== Number(id))
       if (meta.value) {
         meta.value = { count: Math.max(0, meta.value.count - 1) }
       }

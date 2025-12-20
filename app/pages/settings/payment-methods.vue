@@ -40,7 +40,7 @@ const paymentMethodSchema = z.object({
     .max(1000, 'Notes must be 1000 characters or less')
     .optional()
     .nullable(),
-  is_active: z.boolean().optional()
+  isActive: z.boolean().optional()
 })
 
 type PaymentMethodSchema = z.output<typeof paymentMethodSchema>
@@ -49,7 +49,7 @@ type PaymentMethodSchema = z.output<typeof paymentMethodSchema>
 const formState = reactive<PaymentMethodSchema>({
   name: '',
   notes: '',
-  is_active: true
+  isActive: true
 })
 
 // Load payment methods on mount
@@ -65,7 +65,7 @@ function openCreateModal() {
   editingId.value = null
   formState.name = ''
   formState.notes = ''
-  formState.is_active = true
+  formState.isActive = true
   isModalOpen.value = true
 }
 
@@ -75,7 +75,7 @@ function openEditModal(method: UserPaymentMethod) {
   editingId.value = method.id
   formState.name = method.name
   formState.notes = method.notes ?? ''
-  formState.is_active = method.isActive
+  formState.isActive = method.isActive
   isModalOpen.value = true
 }
 
@@ -96,7 +96,7 @@ async function onSubmit(event: FormSubmitEvent<PaymentMethodSchema>) {
       const payload: UpdatePaymentMethodPayload = {
         name: event.data.name,
         notes: event.data.notes || null,
-        is_active: event.data.is_active
+        isActive: event.data.isActive
       }
       await updatePaymentMethod(editingId.value, payload)
       toast.add({
@@ -110,7 +110,7 @@ async function onSubmit(event: FormSubmitEvent<PaymentMethodSchema>) {
       const payload: CreatePaymentMethodPayload = {
         name: event.data.name,
         notes: event.data.notes || null,
-        is_active: event.data.is_active ?? true
+        isActive: event.data.isActive ?? true
       }
       await createPaymentMethod(payload)
       toast.add({
@@ -396,8 +396,8 @@ async function confirmDelete() {
               />
             </UFormField>
 
-            <UFormField v-if="isEditing" name="is_active">
-              <USwitch v-model="formState.is_active" label="Active" />
+            <UFormField v-if="isEditing" name="isActive">
+              <USwitch v-model="formState.isActive" label="Active" />
               <template #description>
                 Inactive payment methods won't appear in purchase dropdowns but preserve historical data.
               </template>

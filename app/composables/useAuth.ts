@@ -1,4 +1,4 @@
-import axios from "axios"
+import axios from 'axios'
 
 export interface LoginCredentials {
   email: string
@@ -33,16 +33,16 @@ export const useAuth = () => {
     if (user.value) return user.value;
 
     try {
-      const { data: user } = await axios.get<User>('/user');
+      const { data: fetchedUser } = await axios.get<User>('/user');
 
       return {
-        ...user,
-        email_verified_at: user.email_verified_at ? new Date(user.email_verified_at) : null,
-        two_factor_confirmed_at: user.two_factor_confirmed_at ? new Date(user.two_factor_confirmed_at) : null,
-        created_at: new Date(user.created_at),
-        updated_at: new Date(user.updated_at)
+        ...fetchedUser,
+        email_verified_at: fetchedUser.email_verified_at ? new Date(fetchedUser.email_verified_at) : null,
+        two_factor_confirmed_at: fetchedUser.two_factor_confirmed_at ? new Date(fetchedUser.two_factor_confirmed_at) : null,
+        created_at: new Date(fetchedUser.created_at),
+        updated_at: new Date(fetchedUser.updated_at)
       };
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -52,42 +52,30 @@ export const useAuth = () => {
   }
 
   async function login(credentials: LoginCredentials) {
-    try {
-      const response = await axios.post<User>('/login', credentials);
-      if (import.meta.client && window.history.length > 1) {
-        router.back();
-      } else {
-        await router.push('/me');
-      }
-    } catch (error) {
-      throw error;
+    await axios.post<User>('/login', credentials);
+
+    if (import.meta.client && window.history.length > 1) {
+      router.back();
+    } else {
+      await router.push('/me');
     }
   }
 
   async function register(credentials: RegisterCredentials) {
-    try {
-      console.log('register');
-      const response = await axios.post<User>('/register', credentials);
+    await axios.post<User>('/register', credentials);
 
-      await login({
-        email: credentials.email,
-        password: credentials.password
-      });
+    await login({
+      email: credentials.email,
+      password: credentials.password
+    });
 
-      await router.push('/me');
-    } catch (error) {
-      throw error;
-    }
+    await router.push('/me');
   }
 
   async function logout() {
-    try {
-      await axios.post('/logout');
-      user.value = null;
-      await router.replace('/login');
-    } catch (error) {
-      throw error;
-    }
+    await axios.post('/logout');
+    user.value = null;
+    await router.replace('/login');
   }
 
   return {
@@ -96,5 +84,5 @@ export const useAuth = () => {
     register,
     initUser,
     user
-  }
-}
+  };
+};
