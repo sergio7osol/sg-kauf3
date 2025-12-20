@@ -1,12 +1,10 @@
 // @ts-check
-import withNuxt from './.nuxt/eslint.config.mjs'
+import withNuxt from './.nuxt/eslint.config.mjs';
 
 export default withNuxt({
   rules: {
+    '@stylistic/semi': ['error', 'always'],
     'vue/no-multiple-template-root': 'off',
-    'vue/max-attributes-per-line': ['error', { 
-      singleline: 1,
-      multiline: 1 
-    }]
+    'vue/max-attributes-per-line': ['error', { singleline: 1, multiline: 1 }]
   }
-})
+});
