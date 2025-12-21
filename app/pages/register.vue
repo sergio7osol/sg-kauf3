@@ -8,7 +8,7 @@ definePageMeta({
 
 const { register } = useAuth();
 
-async function registerUser(event: FormSubmitEvent) {
+async function registerUser(event: FormSubmitEvent<{ name: string; email: string; password: string; password_confirmation: string }>) {
   await register(event.data);
 }
 

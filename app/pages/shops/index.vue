@@ -240,7 +240,7 @@ function handleShopCreated() {
                 class="flex justify-center py-10"
               >
                 <UProgress
-                  animation="pulse"
+                  animation="carousel"
                   size="lg"
                   color="primary"
                   :value="null"

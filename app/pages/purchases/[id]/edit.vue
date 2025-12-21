@@ -45,9 +45,9 @@ const isSubmitting = ref(false);
 const updateMode = ref<'header' | 'full'>('header');
 
 // Purchase header state
-const selectedShopId = ref<number | null>(null);
-const selectedAddressId = ref<number | null>(null);
-const selectedPaymentMethodId = ref<number | null>(null);
+const selectedShopId = ref<number | undefined>(undefined);
+const selectedAddressId = ref<number | undefined>(undefined);
+const selectedPaymentMethodId = ref<number | undefined>(undefined);
 const purchaseDate = ref('');
 const purchaseTime = ref<string | null>(null);
 const currency = ref('EUR');
@@ -77,7 +77,7 @@ function createLineFromData(line: PurchaseLine): LineItem {
     quantity: line.quantity,
     unitPriceEuros: centsToEuros(line.unitPrice),
     taxRate: line.taxRate,
-    discountPercent: line.discountPercent,
+    discountPercent: line.discountPercent ?? null,
     discountAmountEuros: centsToEuros(line.discountAmount ?? 0),
     notes: line.notes || ''
   };
@@ -123,7 +123,7 @@ const addressOptions = computed(() => {
 
 // Computed: Payment method options for dropdown
 const paymentMethodOptions = computed(() => {
-  const options = [{ label: 'No payment method', value: null }];
+  const options: Array<{ label: string, value: number | null }> = [{ label: 'No payment method', value: null }];
   activePaymentMethods.value.forEach((pm: UserPaymentMethod) => {
     options.push({ label: pm.name, value: pm.id });
   });
@@ -192,12 +192,12 @@ const isFormValid = computed(() => {
 // Watch: Reset address when shop changes
 watch(selectedShopId, (newShopId, oldShopId) => {
   // Only reset if shop actually changed (not initial load)
-  if (oldShopId !== null && newShopId !== oldShopId) {
-    selectedAddressId.value = null;
+  if (oldShopId !== undefined && newShopId !== oldShopId) {
+    selectedAddressId.value = undefined;
     // Auto-select first address if only one
     if (newShopId) {
       const addresses = availableAddresses.value;
-      if (addresses.length === 1) {
+      if (addresses.length === 1 && addresses[0]) {
         selectedAddressId.value = addresses[0].id;
       }
     }
@@ -239,7 +239,7 @@ onMounted(async () => {
       // Populate form with existing data
       selectedShopId.value = purchase.value.shopId;
       selectedAddressId.value = purchase.value.shopAddressId;
-      selectedPaymentMethodId.value = purchase.value.userPaymentMethodId ?? null;
+      selectedPaymentMethodId.value = purchase.value.userPaymentMethodId ?? undefined;
       purchaseDate.value = purchase.value.purchaseDate;
       purchaseTime.value = normalizeTimeForInput(purchase.value.purchaseTime ?? null);
       currency.value = purchase.value.currency;

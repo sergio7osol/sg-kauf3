@@ -339,7 +339,7 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
   {
     accessorKey: 'purchaseDateValue',
     header: createSortableHeader('Date'),
-    cell: ({ row }: { row: { original: { purchaseDateDisplay?: string } } }) => row.original.purchaseDateDisplay ?? '—'
+    cell: ({ row }: { row: { original: { purchaseDateDisplay?: string | null } } }) => row.original.purchaseDateDisplay ?? '—'
   },
   {
     accessorKey: 'shopName',
@@ -396,7 +396,7 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
   {
     id: 'actions',
     header: '',
-    cell: ({ row }: { row: { original: { _original: Purchase } } }) => {
+    cell: ({ row }: { row: { original: { _original: Purchase }, getIsExpanded: () => boolean, toggleExpanded: () => void } }) => {
       const purchase = row.original._original;
       const hasLines = purchase.lines && purchase.lines.length > 0;
 

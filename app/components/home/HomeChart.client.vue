@@ -298,27 +298,31 @@ function generateTickConfig(range: Range): TickConfig {
   if (totalDays <= 8) {
     return {
       dates: generateDailyTicks(start, end),
-      resolution: 'day'
+      resolution: 'day',
+      majorTickIndices: new Set<number>()
     };
   }
 
   if (totalDays <= 40) {
     return {
       dates: generateWeeklyTicks(start, end),
-      resolution: 'week'
+      resolution: 'week',
+      majorTickIndices: new Set<number>()
     };
   }
 
   if (totalDays <= 400) {
     return {
       dates: eachMonthOfInterval({ start, end }).map(date => startOfMonth(date)),
-      resolution: 'month'
+      resolution: 'month',
+      majorTickIndices: new Set<number>()
     };
   }
 
   return {
     dates: generateYearlyTicks(start, end),
-    resolution: 'year'
+    resolution: 'year',
+    majorTickIndices: new Set<number>()
   };
 }
 
@@ -336,7 +340,8 @@ function generateWeeklyTicks(start: Date, end: Date): Date[] {
     pointer = addDays(pointer, 7);
   }
 
-  if (ticks.length === 0 || ticks[ticks.length - 1].getTime() !== end.getTime()) {
+  const lastTick = ticks[ticks.length - 1];
+  if (ticks.length === 0 || !lastTick || lastTick.getTime() !== end.getTime()) {
     ticks.push(end);
   }
 

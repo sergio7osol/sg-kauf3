@@ -39,9 +39,9 @@ const importWarnings = ref<string[]>([]);
 const importedAddressLabel = ref<string | null>(null);
 
 // Purchase header state
-const selectedShopId = ref<number | null>(null);
-const selectedAddressId = ref<number | null>(null);
-const selectedPaymentMethodId = ref<number | null>(null);
+const selectedShopId = ref<number | undefined>(undefined);
+const selectedAddressId = ref<number | undefined>(undefined);
+const selectedPaymentMethodId = ref<number | undefined>(undefined);
 const purchaseDate = ref(new Date().toISOString().split('T')[0]); // Today
 const purchaseTime = ref<string | null>(null);
 const currency = ref('EUR');
@@ -115,7 +115,7 @@ const addressOptions = computed(() => {
 
 // Computed: Payment method options for dropdown
 const paymentMethodOptions = computed(() => {
-  const options = [{ label: 'No payment method', value: null }];
+  const options: Array<{ label: string, value: number | null }> = [{ label: 'No payment method', value: null }];
   activePaymentMethods.value.forEach((pm: UserPaymentMethod) => {
     options.push({ label: pm.name, value: pm.id });
   });
@@ -165,8 +165,8 @@ const totalAmountCents = computed(() => {
 // Computed: Check if form is valid for submission
 const isFormValid = computed(() => {
   return (
-    selectedShopId.value !== null
-    && selectedAddressId.value !== null
+    selectedShopId.value !== undefined
+    && selectedAddressId.value !== undefined
     && purchaseDate.value
     && lines.value.length > 0
     && lines.value.every(line => line.description.trim() && line.quantity > 0 && line.unitPriceEuros >= 0)
@@ -175,12 +175,12 @@ const isFormValid = computed(() => {
 
 // Watch: Reset address when shop changes
 watch(selectedShopId, (newShopId) => {
-  selectedAddressId.value = null;
+  selectedAddressId.value = undefined;
   importedAddressLabel.value = null;
   // Auto-select first address if only one
   if (newShopId) {
     const addresses = availableAddresses.value;
-    if (addresses.length === 1) {
+    if (addresses.length === 1 && addresses[0]) {
       selectedAddressId.value = addresses[0].id;
     }
   }
@@ -230,7 +230,7 @@ async function handleSubmit() {
       shopId: selectedShopId.value!,
       shopAddressId: selectedAddressId.value!,
       userPaymentMethodId: selectedPaymentMethodId.value,
-      purchaseDate: purchaseDate.value,
+      purchaseDate: purchaseDate.value!,
       purchaseTime: normalizeTimeForSubmit(purchaseTime.value),
       currency: currency.value,
       status: status.value,

@@ -37,13 +37,13 @@ onMounted(async () => {
 });
 
 const statusColor = computed(() => {
-  if (!purchase.value) return { badge: 'neutral', text: 'text-muted' };
+  if (!purchase.value) return { badge: 'neutral' as const, text: 'text-muted' };
   const colors = {
-    confirmed: { badge: 'green', text: 'text-green-600 dark:text-green-400' },
-    draft: { badge: 'neutral', text: 'text-muted' },
-    cancelled: { badge: 'red', text: 'text-red-600 dark:text-red-400' }
+    confirmed: { badge: 'success' as const, text: 'text-green-600 dark:text-green-400' },
+    draft: { badge: 'neutral' as const, text: 'text-muted' },
+    cancelled: { badge: 'error' as const, text: 'text-red-600 dark:text-red-400' }
   };
-  return colors[purchase.value.status as keyof typeof colors] || { badge: 'neutral', text: 'text-muted' };
+  return colors[purchase.value.status as keyof typeof colors] || { badge: 'neutral' as const, text: 'text-muted' };
 });
 
 const formattedDate = computed(() => {

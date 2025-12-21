@@ -8,7 +8,8 @@ import {
   createShopFormState,
   extractValidationErrors,
   shopFormSchema,
-  type ShopFormState
+  type ShopFormState,
+  type ValidatedShopFormState
 } from '~/composables/useShopForm';
 
 const router = useRouter();
@@ -19,7 +20,7 @@ const state = reactive<ShopFormState>(createShopFormState());
 const submitting = ref(false);
 const formErrors = ref<Record<string, string>>({});
 
-async function onSubmit(event: FormSubmitEvent<ShopFormState>) {
+async function onSubmit(event: FormSubmitEvent<ValidatedShopFormState>) {
   submitting.value = true;
   formErrors.value = {};
 
@@ -40,7 +41,10 @@ async function onSubmit(event: FormSubmitEvent<ShopFormState>) {
 
     if (backendErrors) {
       Object.keys(backendErrors).forEach((key) => {
-        formErrors.value[key] = backendErrors[key][0];
+        const errors = backendErrors[key];
+        if (errors && errors[0]) {
+          formErrors.value[key] = errors[0];
+        }
       });
     } else {
       console.error('Shop creation failed:', error);
@@ -146,7 +150,7 @@ async function onSubmit(event: FormSubmitEvent<ShopFormState>) {
               Create Shop
             </UButton>
             <UButton
-              color="gray"
+              color="neutral"
               variant="ghost"
               size="lg"
               :disabled="submitting"

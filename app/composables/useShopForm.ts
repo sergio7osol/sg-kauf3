@@ -21,6 +21,15 @@ export interface ShopFormState {
   isActive: boolean
 }
 
+// Validated form state type (after zod validation)
+export type ValidatedShopFormState = {
+  name: string
+  type: ShopType
+  country: CountryCode
+  isActive: boolean
+  slug?: string
+};
+
 export const createShopFormState = (overrides: Partial<ShopFormState> = {}): ShopFormState => ({
   name: '',
   slug: '',
@@ -30,7 +39,7 @@ export const createShopFormState = (overrides: Partial<ShopFormState> = {}): Sho
   ...overrides
 });
 
-export const buildShopPayload = (state: ShopFormState) => ({
+export const buildShopPayload = (state: ShopFormState | ValidatedShopFormState) => ({
   name: state.name,
   type: state.type,
   country: state.country,
