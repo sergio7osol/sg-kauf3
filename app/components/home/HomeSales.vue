@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { h, resolveComponent } from 'vue'
-import type { TableColumn } from '@nuxt/ui'
-import type { Period, Range, Sale } from '~/types'
+import { h, resolveComponent } from 'vue';
+import type { TableColumn } from '@nuxt/ui';
+import type { Period, Range, Sale } from '~/types';
 
 const props = defineProps<{
   period: Period
   range: Range
-}>()
+}>();
 
-const UBadge = resolveComponent('UBadge')
+const UBadge = resolveComponent('UBadge');
 
 const sampleEmails = [
   'james.anderson@example.com',
@@ -16,15 +16,15 @@ const sampleEmails = [
   'william.brown@example.com',
   'emma.davis@example.com',
   'ethan.harris@example.com'
-]
+];
 
 const { data } = await useAsyncData('sales', async () => {
-  const sales: Sale[] = []
-  const currentDate = new Date()
+  const sales: Sale[] = [];
+  const currentDate = new Date();
 
   for (let i = 0; i < 5; i++) {
-    const hoursAgo = randomInt(0, 48)
-    const date = new Date(currentDate.getTime() - hoursAgo * 3600000)
+    const hoursAgo = randomInt(0, 48);
+    const date = new Date(currentDate.getTime() - hoursAgo * 3600000);
 
     sales.push({
       id: (4600 - i).toString(),
@@ -32,14 +32,14 @@ const { data } = await useAsyncData('sales', async () => {
       status: randomFrom(['paid', 'failed', 'refunded']),
       email: randomFrom(sampleEmails),
       amount: randomInt(100, 1000)
-    })
+    });
   }
 
-  return sales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  return sales.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }, {
   watch: [() => props.period, () => props.range],
   default: () => []
-})
+});
 
 const columns: TableColumn<Sale>[] = [
   {
@@ -57,7 +57,7 @@ const columns: TableColumn<Sale>[] = [
         hour: '2-digit',
         minute: '2-digit',
         hour12: false
-      })
+      });
     }
   },
   {
@@ -68,11 +68,11 @@ const columns: TableColumn<Sale>[] = [
         paid: 'success' as const,
         failed: 'error' as const,
         refunded: 'neutral' as const
-      }[row.getValue('status') as string]
+      }[row.getValue('status') as string];
 
       return h(UBadge, { class: 'capitalize', variant: 'subtle', color }, () =>
         row.getValue('status')
-      )
+      );
     }
   },
   {
@@ -83,17 +83,17 @@ const columns: TableColumn<Sale>[] = [
     accessorKey: 'amount',
     header: () => h('div', { class: 'text-right' }, 'Amount'),
     cell: ({ row }) => {
-      const amount = Number.parseFloat(row.getValue('amount'))
+      const amount = Number.parseFloat(row.getValue('amount'));
 
       const formatted = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'EUR'
-      }).format(amount)
+      }).format(amount);
 
-      return h('div', { class: 'text-right font-medium' }, formatted)
+      return h('div', { class: 'text-right font-medium' }, formatted);
     }
   }
-]
+];
 </script>
 
 <template>

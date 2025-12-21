@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import type { DropdownMenuItem } from '@nuxt/ui'
+import type { DropdownMenuItem } from '@nuxt/ui';
 
 defineProps<{
   collapsed?: boolean
-}>()
+}>();
 
-const colorMode = useColorMode()
-const appConfig = useAppConfig()
-const { user: loggedInUser, fetchUser } = useUser()
+const colorMode = useColorMode();
+const appConfig = useAppConfig();
+const { user: loggedInUser, fetchUser } = useUser();
 
-const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
-const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
+const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose'];
+const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone'];
 
 const user = computed(() => loggedInUser.value || {
   name: 'Guest',
@@ -18,13 +18,13 @@ const user = computed(() => loggedInUser.value || {
     src: 'https://github.com/nuxt.png',
     alt: 'Guest'
   }
-})
+});
 
 onMounted(() => {
   if (!loggedInUser.value) {
-    fetchUser()
+    fetchUser();
   }
-})
+});
 
 const items = computed<DropdownMenuItem[][]>(() => ([[{
   type: 'label',
@@ -59,9 +59,9 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
       checked: appConfig.ui.colors.primary === color,
       type: 'checkbox',
       onSelect: (e) => {
-        e.preventDefault()
+        e.preventDefault();
 
-        appConfig.ui.colors.primary = color
+        appConfig.ui.colors.primary = color;
       }
     }))
   }, {
@@ -79,9 +79,9 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
       type: 'checkbox',
       checked: appConfig.ui.colors.neutral === color,
       onSelect: (e) => {
-        e.preventDefault()
+        e.preventDefault();
 
-        appConfig.ui.colors.neutral = color
+        appConfig.ui.colors.neutral = color;
       }
     }))
   }]
@@ -94,9 +94,9 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     type: 'checkbox',
     checked: colorMode.value === 'light',
     onSelect(e: Event) {
-      e.preventDefault()
+      e.preventDefault();
 
-      colorMode.preference = 'light'
+      colorMode.preference = 'light';
     }
   }, {
     label: 'Dark',
@@ -105,11 +105,11 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     checked: colorMode.value === 'dark',
     onUpdateChecked(checked: boolean) {
       if (checked) {
-        colorMode.preference = 'dark'
+        colorMode.preference = 'dark';
       }
     },
     onSelect(e: Event) {
-      e.preventDefault()
+      e.preventDefault();
     }
   }]
 }], [{
@@ -157,7 +157,7 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   label: 'Log out',
   icon: 'i-lucide-log-out',
   to: '/logout'
-}]]))
+}]]));
 </script>
 
 <template>

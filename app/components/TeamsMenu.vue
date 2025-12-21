@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { DropdownMenuItem } from '@nuxt/ui'
+import type { DropdownMenuItem } from '@nuxt/ui';
 
 defineProps<{
   collapsed?: boolean
-}>()
+}>();
 
 const teams = ref([{
   label: 'Nuxt',
@@ -23,14 +23,14 @@ const teams = ref([{
     src: 'https://github.com/nuxtlabs.png',
     alt: 'NuxtLabs'
   }
-}])
-const selectedTeam = ref(teams.value[0])
+}]);
+const selectedTeam = ref(teams.value[0]);
 
 const items = computed<DropdownMenuItem[][]>(() => {
   return [teams.value.map(team => ({
     ...team,
     onSelect() {
-      selectedTeam.value = team
+      selectedTeam.value = team;
     }
   })), [{
     label: 'Create team',
@@ -38,8 +38,8 @@ const items = computed<DropdownMenuItem[][]>(() => {
   }, {
     label: 'Manage teams',
     icon: 'i-lucide-cog'
-  }]]
-})
+  }]];
+});
 </script>
 
 <template>
