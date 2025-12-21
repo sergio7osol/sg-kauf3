@@ -22,11 +22,7 @@ export default defineNuxtConfig({
   },
   devServer: {
     host: '0.0.0.0',
-    port: 3000,
-    headers: {
-      'Cache-Control': 'no-store, no-cache, must-revalidate',
-      'Pragma': 'no-cache'
-    }
+    port: 3000
   },
   compatibilityDate: '2024-07-11',
 

@@ -55,7 +55,7 @@ watch(isOpen, async (newVal) => {
 });
 
 // Handle file selection from UFileUpload
-function handleFileChange(file: File | File[] | null) {
+function handleFileChange(file: File | File[] | null | undefined) {
   localError.value = null;
 
   if (!file) {

@@ -9,7 +9,8 @@ import {
   createShopFormState,
   extractValidationErrors,
   shopFormSchema,
-  type ShopFormState
+  type ShopFormState,
+  type ValidatedShopFormState
 } from '~/composables/useShopForm';
 
 const emit = defineEmits<{ (e: 'created', shop: Shop): void }>();
@@ -38,7 +39,7 @@ function resetForm() {
   }));
 }
 
-async function onSubmit(event: FormSubmitEvent<ShopFormState>) {
+async function onSubmit(event: FormSubmitEvent<ValidatedShopFormState>) {
   submitting.value = true;
   try {
     const payload = buildShopPayload(event.data);

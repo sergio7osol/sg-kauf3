@@ -117,13 +117,18 @@ export function usePurchaseChart() {
  * Creates date buckets for the given period and range.
  */
 function createDateBuckets(period: Period, range: Range): Date[] {
-  const intervalFn = {
-    daily: eachDayOfInterval,
-    weekly: eachWeekOfInterval,
-    monthly: eachMonthOfInterval
-  }[period];
+  const interval = { start: range.start, end: range.end };
 
-  return intervalFn({ start: range.start, end: range.end });
+  switch (period) {
+    case 'daily':
+      return eachDayOfInterval(interval);
+    case 'weekly':
+      return eachWeekOfInterval(interval);
+    case 'monthly':
+      return eachMonthOfInterval(interval);
+    default:
+      return eachDayOfInterval(interval);
+  }
 }
 
 /**
