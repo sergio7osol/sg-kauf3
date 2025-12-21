@@ -14,6 +14,7 @@ import {
   addYears,
   startOfDay
 } from 'date-fns';
+import { ComponentPublicInstance } from 'vue';
 import { VisXYContainer, VisLine, VisAxis, VisArea, VisCrosshair, VisTooltip } from '@unovis/vue';
 import type { Period, Range } from '~/types';
 import { usePurchaseChart, fetchPurchaseDateRange, type ChartDataPoint } from '~/composables/usePurchaseChart';
@@ -252,8 +253,21 @@ const xTicks = (i: number) => {
 
 const template = (d: DataRecord) => `${formatDate(d.date)}: ${formatNumber(d.amount)}`;
 
+function resolveCardElement(): HTMLElement | null {
+  const target = cardRef.value;
+  if (!target) {
+    return null;
+  }
+
+  if (target instanceof HTMLElement) {
+    return target;
+  }
+
+  return (target as ComponentPublicInstance).$el ?? null;
+}
+
 function applyAxisTickStyles() {
-  const cardEl = cardRef.value;
+  const cardEl = resolveCardElement();
   if (!cardEl) {
     return;
   }
