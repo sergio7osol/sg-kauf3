@@ -1,7 +1,7 @@
-import type { AvatarProps } from '@nuxt/ui'
+import type { AvatarProps } from '@nuxt/ui';
 
-export type UserStatus = 'subscribed' | 'unsubscribed' | 'bounced'
-export type SaleStatus = 'paid' | 'failed' | 'refunded'
+export type UserStatus = 'subscribed' | 'unsubscribed' | 'bounced';
+export type SaleStatus = 'paid' | 'failed' | 'refunded';
 
 export interface User {
   id: number
@@ -61,15 +61,15 @@ export interface Notification {
   date: string
 }
 
-export type Period = 'daily' | 'weekly' | 'monthly'
+export type Period = 'daily' | 'weekly' | 'monthly';
 
 export interface Range {
   start: Date
   end: Date
 }
 
-export type ShopType = 'in_store' | 'online' | 'hybrid'
-export type CountryCode = 'Germany' | 'Russia' | 'DE' | 'RU'
+export type ShopType = 'in_store' | 'online' | 'hybrid';
+export type CountryCode = 'Germany' | 'Russia' | 'DE' | 'RU';
 
 export interface ShopAddress {
   id: number
@@ -95,7 +95,7 @@ export interface Shop {
   addresses?: ShopAddress[]
 }
 
-export type PurchaseStatus = 'draft' | 'confirmed' | 'cancelled'
+export type PurchaseStatus = 'draft' | 'confirmed' | 'cancelled';
 
 export interface UserPaymentMethod {
   id: number
@@ -171,7 +171,7 @@ export interface CreatePurchasePayload {
 }
 
 // Receipt Parsing Types
-export type ReceiptConfidence = 'high' | 'medium' | 'low'
+export type ReceiptConfidence = 'high' | 'medium' | 'low';
 
 export interface ParsedReceiptItem {
   name: string

@@ -10,7 +10,7 @@
  * @returns Formatted string (e.g., "€12.99")
  */
 export function formatCents(cents: number): string {
-  return `€${(cents / 100).toFixed(2)}`
+  return `€${(cents / 100).toFixed(2)}`;
 }
 
 /**
@@ -19,7 +19,7 @@ export function formatCents(cents: number): string {
  * @returns Number in euros (e.g., 12.99)
  */
 export function centsToEuros(cents: number): number {
-  return cents / 100
+  return cents / 100;
 }
 
 /**
@@ -28,7 +28,7 @@ export function centsToEuros(cents: number): number {
  * @returns Amount in cents (e.g., 1299)
  */
 export function eurosToCents(euros: number): number {
-  return Math.round(euros * 100)
+  return Math.round(euros * 100);
 }
 
 /**
@@ -39,10 +39,10 @@ export function eurosToCents(euros: number): number {
  */
 export function parseInputToCents(input: string): number {
   // Replace comma with dot for parsing
-  const normalized = input.replace(',', '.')
-  const euros = parseFloat(normalized)
-  if (isNaN(euros)) return 0
-  return eurosToCents(euros)
+  const normalized = input.replace(',', '.');
+  const euros = parseFloat(normalized);
+  if (isNaN(euros)) return 0;
+  return eurosToCents(euros);
 }
 
 /**
@@ -51,5 +51,5 @@ export function parseInputToCents(input: string): number {
  * @returns String for input (e.g., "12.99")
  */
 export function centsToInputValue(cents: number): string {
-  return (cents / 100).toFixed(2)
+  return (cents / 100).toFixed(2);
 }

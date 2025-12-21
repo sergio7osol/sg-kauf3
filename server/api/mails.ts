@@ -1,4 +1,4 @@
-import { sub } from 'date-fns'
+import { sub } from 'date-fns';
 
 const mails = [{
   id: 1,
@@ -684,8 +684,8 @@ Service Coordinator
 Downtown Auto Care
 Emergency: (555) 987-6544`,
   date: sub(new Date(), { months: 2 }).toISOString()
-}]
+}];
 
 export default eventHandler(async () => {
-  return mails
-})
+  return mails;
+});
