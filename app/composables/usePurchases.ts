@@ -1,5 +1,5 @@
-import axios from 'axios'
-import type { Purchase, PurchaseStatus, CreatePurchasePayload, PaginationMeta } from '~/types'
+import axios from 'axios';
+import type { Purchase, PurchaseStatus, CreatePurchasePayload, PaginationMeta } from '~/types';
 
 export interface FetchPurchasesParams {
   shopId?: number | null
@@ -16,109 +16,109 @@ export interface FetchPurchasesParams {
  * Boolean values are converted to 1/0 for API compatibility.
  */
 function buildQueryParams(params: FetchPurchasesParams): Record<string, unknown> {
-  const result: Record<string, unknown> = {}
-  
+  const result: Record<string, unknown> = {};
+
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== '') {
-      result[key] = typeof value === 'boolean' ? Number(value) : value
+      result[key] = typeof value === 'boolean' ? Number(value) : value;
     }
   }
-  
-  return result
+
+  return result;
 }
 
 export const usePurchases = () => {
-  const purchases = useState<Purchase[]>('purchases', () => [])
-  const meta = useState<PaginationMeta | null>('purchasesMeta', () => null)
-  const isLoading = useState('purchasesLoading', () => false)
-  const error = useState<string | null>('purchasesError', () => null)
-  
+  const purchases = useState<Purchase[]>('purchases', () => []);
+  const meta = useState<PaginationMeta | null>('purchasesMeta', () => null);
+  const isLoading = useState('purchasesLoading', () => false);
+  const error = useState<string | null>('purchasesError', () => null);
+
   // Single purchase state
-  const purchase = useState<Purchase | null>('purchase', () => null)
-  const purchaseLoading = useState('purchaseLoading', () => false)
-  const purchaseError = useState<string | null>('purchaseError', () => null)
+  const purchase = useState<Purchase | null>('purchase', () => null);
+  const purchaseLoading = useState('purchaseLoading', () => false);
+  const purchaseError = useState<string | null>('purchaseError', () => null);
 
   async function fetchPurchases(params: FetchPurchasesParams = {}) {
-    isLoading.value = true
-    error.value = null
-    purchases.value = [] // Clear stale data before fetch
-    const queryParams = buildQueryParams(params)
+    isLoading.value = true;
+    error.value = null;
+    purchases.value = []; // Clear stale data before fetch
+    const queryParams = buildQueryParams(params);
 
     try {
-      const { data } = await axios.get<{ data: Purchase[]; meta?: PaginationMeta }>('/purchases', {
+      const { data } = await axios.get<{ data: Purchase[], meta?: PaginationMeta }>('/purchases', {
         params: queryParams
-      })
+      });
 
-      purchases.value = Array.isArray(data.data) ? data.data : []
-      meta.value = data.meta ?? null
+      purchases.value = Array.isArray(data.data) ? data.data : [];
+      meta.value = data.meta ?? null;
 
-      return data
-    } catch (err) {
-      error.value = 'Unable to load purchases. Please try again.'
-      console.error('Failed to fetch purchases:', err)
-      throw err
+      return data;
+    } catch (err: unknown) {
+      error.value = 'Unable to load purchases. Please try again.';
+      console.error('Failed to fetch purchases:', err);
+      throw err;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
 
   async function fetchPurchase(id: number | string) {
-    purchaseLoading.value = true
-    purchaseError.value = null
-    purchase.value = null
+    purchaseLoading.value = true;
+    purchaseError.value = null;
+    purchase.value = null;
 
     try {
-      const { data } = await axios.get<{ data: Purchase }>(`/purchases/${id}`)
-      purchase.value = data.data
-      return data
-    } catch (err: any) {
-      if (err?.response?.status === 404) {
-        purchaseError.value = 'Purchase not found.'
+      const { data } = await axios.get<{ data: Purchase }>(`/purchases/${id}`);
+      purchase.value = data.data;
+      return data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        purchaseError.value = 'Purchase not found.';
       } else {
-        purchaseError.value = 'Unable to load purchase details. Please try again.'
+        purchaseError.value = 'Unable to load purchase details. Please try again.';
       }
-      console.error('Failed to fetch purchase:', err)
-      throw err
+      console.error('Failed to fetch purchase:', err);
+      throw err;
     } finally {
-      purchaseLoading.value = false
+      purchaseLoading.value = false;
     }
   }
 
   async function createPurchase(payload: CreatePurchasePayload) {
     try {
-      const { data } = await axios.post<{ data: Purchase }>('/purchases', payload)
-      return data
-    } catch (err) {
-      console.error('Failed to create purchase:', err)
-      throw err
+      const { data } = await axios.post<{ data: Purchase }>('/purchases', payload);
+      return data;
+    } catch (err: unknown) {
+      console.error('Failed to create purchase:', err);
+      throw err;
     }
   }
 
   async function updatePurchase(id: number, payload: Partial<CreatePurchasePayload>) {
     try {
-      const { data } = await axios.patch<{ data: Purchase }>(`/purchases/${id}`, payload)
+      const { data } = await axios.patch<{ data: Purchase }>(`/purchases/${id}`, payload);
       // Update single purchase state if it matches
       if (purchase.value?.id === id) {
-        purchase.value = data.data
+        purchase.value = data.data;
       }
-      return data
-    } catch (err) {
-      console.error('Failed to update purchase:', err)
-      throw err
+      return data;
+    } catch (err: unknown) {
+      console.error('Failed to update purchase:', err);
+      throw err;
     }
   }
 
   async function deletePurchase(id: number) {
     try {
-      const { data } = await axios.delete<{ message: string }>(`/purchases/${id}`)
+      const { data } = await axios.delete<{ message: string }>(`/purchases/${id}`);
       // Clear single purchase state if it matches
       if (purchase.value?.id === id) {
-        purchase.value = null
+        purchase.value = null;
       }
-      return data
-    } catch (err) {
-      console.error('Failed to delete purchase:', err)
-      throw err
+      return data;
+    } catch (err: unknown) {
+      console.error('Failed to delete purchase:', err);
+      throw err;
     }
   }
 
@@ -135,5 +135,5 @@ export const usePurchases = () => {
     createPurchase,
     updatePurchase,
     deletePurchase
-  }
-}
+  };
+};

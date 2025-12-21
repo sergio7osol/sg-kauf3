@@ -2,19 +2,19 @@
   setup
   lang="ts"
 >
-import type { NavigationMenuItem } from '@nuxt/ui'
+import type { NavigationMenuItem } from '@nuxt/ui';
 
-const route = useRoute()
-const toast = useToast()
+const route = useRoute();
+const toast = useToast();
 
-const open = ref(false)
+const open = ref(false);
 
 const links = [[{
   label: 'Home',
   icon: 'i-lucide-house',
   to: '/',
   onSelect: () => {
-    open.value = false
+    open.value = false;
   }
 }, {
   label: 'Inbox',
@@ -22,35 +22,35 @@ const links = [[{
   to: '/inbox',
   badge: '4',
   onSelect: () => {
-    open.value = false
+    open.value = false;
   }
 }, {
   label: 'Shops',
   icon: 'i-lucide-shopping-cart',
   to: '/shops',
   onSelect: () => {
-    open.value = false
+    open.value = false;
   }
 }, {
   label: 'Purchases',
   icon: 'i-lucide-receipt-text',
   to: '/purchases',
   onSelect: () => {
-    open.value = false
+    open.value = false;
   }
 }, {
   label: 'Session Check',
   icon: 'i-lucide-car',
   to: '/session-check',
   onSelect: () => {
-    open.value = false
+    open.value = false;
   }
 }, {
   label: 'Customers',
   icon: 'i-lucide-users',
   to: '/customers',
   onSelect: () => {
-    open.value = false
+    open.value = false;
   }
 }, {
   label: 'Settings',
@@ -63,25 +63,25 @@ const links = [[{
     to: '/settings',
     exact: true,
     onSelect: () => {
-      open.value = false
+      open.value = false;
     }
   }, {
     label: 'Members',
     to: '/settings/members',
     onSelect: () => {
-      open.value = false
+      open.value = false;
     }
   }, {
     label: 'Notifications',
     to: '/settings/notifications',
     onSelect: () => {
-      open.value = false
+      open.value = false;
     }
   }, {
     label: 'Security',
     to: '/settings/security',
     onSelect: () => {
-      open.value = false
+      open.value = false;
     }
   }]
 }], [{
@@ -94,7 +94,7 @@ const links = [[{
   icon: 'i-lucide-info',
   to: 'https://github.com/nuxt-ui-templates/dashboard',
   target: '_blank'
-}]] satisfies NavigationMenuItem[][]
+}]] satisfies NavigationMenuItem[][];
 
 const groups = computed(() => [{
   id: 'links',
@@ -110,12 +110,12 @@ const groups = computed(() => [{
     to: `https://github.com/nuxt-ui-templates/dashboard/blob/main/app/pages${route.path === '/' ? '/index' : route.path}.vue`,
     target: '_blank'
   }]
-}])
+}]);
 
 onMounted(async () => {
-  const cookie = useCookie('cookie-consent')
+  const cookie = useCookie('cookie-consent');
   if (cookie.value === 'accepted') {
-    return
+    return;
   }
 
   toast.add({
@@ -127,15 +127,15 @@ onMounted(async () => {
       color: 'neutral',
       variant: 'outline',
       onClick: () => {
-        cookie.value = 'accepted'
+        cookie.value = 'accepted';
       }
     }, {
       label: 'Opt out',
       color: 'neutral',
       variant: 'ghost'
     }]
-  })
-})
+  });
+});
 </script>
 
 <template>

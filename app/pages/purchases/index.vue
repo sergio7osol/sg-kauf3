@@ -1,63 +1,65 @@
 <script setup lang="ts">
-import { h } from 'vue'
-import axios from 'axios'
-import type { TableColumn } from '@nuxt/ui'
-import { usePurchases, type FetchPurchasesParams } from '~/composables/usePurchases'
-import { useShops } from '~/composables/useShops'
-import type { Purchase, PurchaseStatus } from '~/types'
+import { h } from 'vue';
+import axios from 'axios';
+import type { TableColumn } from '@nuxt/ui';
+import { usePurchases, type FetchPurchasesParams } from '~/composables/usePurchases';
+import { useShops } from '~/composables/useShops';
+import type { Purchase, PurchaseStatus, Shop, PurchaseLine } from '~/types';
 
 definePageMeta({
   middleware: ['auth']
-})
+});
 
 function openDeleteModal(purchase: Purchase) {
-  purchaseToDelete.value = purchase
-  isDeleteModalOpen.value = true
+  purchaseToDelete.value = purchase;
+  isDeleteModalOpen.value = true;
 }
 
 function closeDeleteModal() {
-  isDeleteModalOpen.value = false
-  purchaseToDelete.value = null
+  isDeleteModalOpen.value = false;
+  purchaseToDelete.value = null;
 }
 
 async function handleConfirmDelete() {
-  if (!purchaseToDelete.value) return
-  isDeleting.value = true
+  if (!purchaseToDelete.value) return;
+  isDeleting.value = true;
 
   try {
-    await deletePurchase(purchaseToDelete.value.id)
+    await deletePurchase(purchaseToDelete.value.id);
 
     toast.add({
       title: 'Purchase deleted',
       description: `Purchase #${purchaseToDelete.value.id} has been removed.`,
       icon: 'i-lucide-check',
       color: 'success'
-    })
+    });
 
     // Refresh list with current filters
-    const params = buildFilterParams()
-    await fetchPurchases(params)
-  } catch (err: any) {
-    const message = err?.response?.data?.message || 'Failed to delete purchase. Please try again.'
+    const params = buildFilterParams();
+    await fetchPurchases(params);
+  } catch (err: unknown) {
+    const message = axios.isAxiosError(err)
+      ? err.response?.data?.message ?? 'Failed to delete purchase. Please try again.'
+      : 'Failed to delete purchase. Please try again.';
     toast.add({
       title: 'Error',
       description: message,
       icon: 'i-lucide-alert-circle',
       color: 'error'
-    })
+    });
   } finally {
-    isDeleting.value = false
-    closeDeleteModal()
+    isDeleting.value = false;
+    closeDeleteModal();
   }
 }
 
-const UBadge = resolveComponent('UBadge')
-const UButton = resolveComponent('UButton')
-const UChip = resolveComponent('UChip')
+const UBadge = resolveComponent('UBadge');
+const UButton = resolveComponent('UButton');
+const UChip = resolveComponent('UChip');
 
-const toast = useToast()
-const { purchases, meta, isLoading, error: fetchError, fetchPurchases, deletePurchase } = usePurchases()
-const { shops, fetchShops, isLoading: shopsLoading } = useShops()
+const toast = useToast();
+const { purchases, meta, isLoading, error: _fetchError, fetchPurchases, deletePurchase } = usePurchases();
+const { shops, fetchShops, isLoading: shopsLoading } = useShops();
 
 // Aggregates state (calculated from ALL matching purchases, not just current page)
 interface PurchaseAggregates {
@@ -74,23 +76,23 @@ const aggregates = ref<PurchaseAggregates>({
   totalSubtotal: 0,
   count: 0,
   avgPurchase: 0
-})
-const isLoadingAggregates = ref(false)
-const showTotalSpentAnimation = ref(false)
+});
+const isLoadingAggregates = ref(false);
+const showTotalSpentAnimation = ref(false);
 
 const breadcrumbs = [
   { label: 'Dashboard', to: '/' },
   { label: 'Purchases', to: '/purchases' }
-]
+];
 
-const DEFAULT_PER_PAGE = 15
+const DEFAULT_PER_PAGE = 15;
 
 const perPageOptions = [
   { label: '15 per page', value: 15 },
   { label: '25 per page', value: 25 },
   { label: '50 per page', value: 50 },
   { label: '100 per page', value: 100 }
-]
+];
 
 const filters = reactive({
   shopId: null as number | null,
@@ -100,191 +102,191 @@ const filters = reactive({
   includeLines: false,
   page: 1,
   perPage: DEFAULT_PER_PAGE
-})
+});
 
 const statusOptions = [
   { label: 'All statuses', value: 'all' },
   { label: 'Draft', value: 'draft' },
   { label: 'Confirmed', value: 'confirmed' },
   { label: 'Cancelled', value: 'cancelled' }
-]
+];
 
 const shopOptions = computed(() => {
-  const base = [{ label: 'All shops', value: null }]
-  const dynamic = shops.value.map((shop: any) => ({
+  const base = [{ label: 'All shops', value: null }];
+  const dynamic = shops.value.map((shop: Shop) => ({
     label: shop.name,
     value: shop.id
-  }))
-  return [...base, ...dynamic]
-})
+  }));
+  return [...base, ...dynamic];
+});
 
 onMounted(async () => {
   // Load shops for filter dropdown
-  await fetchShops({ includeAddresses: 0 }).catch(err => console.error('Failed to load shops for filters', err))
-  
+  await fetchShops({ includeAddresses: 0 }).catch(err => console.error('Failed to load shops for filters', err));
+
   // Load purchases and aggregates on page load
   await Promise.all([
     fetchPurchases({ perPage: filters.perPage, page: filters.page }).catch(err => console.error('Failed to load purchases on mount', err)),
     fetchAggregates()
-  ])
-})
+  ]);
+});
 
 function buildFilterParams(): FetchPurchasesParams {
-  const params: FetchPurchasesParams = {}
+  const params: FetchPurchasesParams = {};
 
   if (filters.shopId) {
-    params.shopId = filters.shopId
+    params.shopId = filters.shopId;
   }
 
   if (filters.dateFrom) {
-    params.dateFrom = filters.dateFrom
+    params.dateFrom = filters.dateFrom;
   }
 
   if (filters.dateTo) {
-    params.dateTo = filters.dateTo
+    params.dateTo = filters.dateTo;
   }
 
   if (filters.status !== 'all') {
-    params.status = filters.status as PurchaseStatus
+    params.status = filters.status as PurchaseStatus;
   }
 
   if (filters.includeLines) {
-    params.includeLines = true
+    params.includeLines = true;
   }
 
-  params.perPage = filters.perPage
-  params.page = filters.page
+  params.perPage = filters.perPage;
+  params.page = filters.page;
 
-  return params
+  return params;
 }
 
 // Fetch aggregates for ALL matching purchases (across all pages)
 async function fetchAggregates() {
-  isLoadingAggregates.value = true
-  showTotalSpentAnimation.value = false
-  
+  isLoadingAggregates.value = true;
+  showTotalSpentAnimation.value = false;
+
   try {
     // Build base params (include lines for discount calculation)
-    const baseParams: Record<string, unknown> = {}
-    if (filters.shopId) baseParams.shopId = filters.shopId
-    if (filters.dateFrom) baseParams.dateFrom = filters.dateFrom
-    if (filters.dateTo) baseParams.dateTo = filters.dateTo
-    if (filters.status !== 'all') baseParams.status = filters.status
-    baseParams.perPage = 100 // Max allowed per request
-    baseParams.includeLines = 1 // Need lines to calculate discounts
+    const baseParams: Record<string, unknown> = {};
+    if (filters.shopId) baseParams.shopId = filters.shopId;
+    if (filters.dateFrom) baseParams.dateFrom = filters.dateFrom;
+    if (filters.dateTo) baseParams.dateTo = filters.dateTo;
+    if (filters.status !== 'all') baseParams.status = filters.status;
+    baseParams.perPage = 100; // Max allowed per request
+    baseParams.includeLines = 1; // Need lines to calculate discounts
 
     // Fetch all pages to get complete data
-    let allPurchases: any[] = []
-    let currentPage = 1
-    let lastPage = 1
+    let allPurchases: Purchase[] = [];
+    let currentPage = 1;
+    let lastPage = 1;
 
     do {
-      const response = await axios.get('/purchases', { 
-        params: { ...baseParams, page: currentPage } 
-      })
-      
-      const pageData = response.data.data || []
-      allPurchases = [...allPurchases, ...pageData]
-      
+      const response = await axios.get('/purchases', {
+        params: { ...baseParams, page: currentPage }
+      });
+
+      const pageData = response.data.data || [];
+      allPurchases = [...allPurchases, ...pageData];
+
       // Get pagination info from first request
       if (currentPage === 1 && response.data.meta) {
-        lastPage = response.data.meta.lastPage || 1
+        lastPage = response.data.meta.lastPage || 1;
       }
-      
-      currentPage++
-    } while (currentPage <= lastPage)
+
+      currentPage++;
+    } while (currentPage <= lastPage);
 
     // Calculate aggregates from API data
-    let totalSpent = 0
-    let totalDiscount = 0
-    let totalSubtotal = 0
+    let totalSpent = 0;
+    let totalDiscount = 0;
+    let totalSubtotal = 0;
 
-    allPurchases.forEach((p: any) => {
-      totalSpent += p.totalAmount ?? 0
-      totalSubtotal += p.subtotal ?? 0
-      
+    allPurchases.forEach((p: Purchase) => {
+      totalSpent += p.totalAmount ?? 0;
+      totalSubtotal += p.subtotal ?? 0;
+
       // Calculate discount from line items
-      const lines = p.lines || []
-      lines.forEach((line: any) => {
-        totalDiscount += line.discountAmount ?? 0
-      })
-    })
+      const lines = p.lines || [];
+      lines.forEach((line: PurchaseLine) => {
+        totalDiscount += line.discountAmount ?? 0;
+      });
+    });
 
-    const count = allPurchases.length
+    const count = allPurchases.length;
     aggregates.value = {
       totalSpent,
       totalDiscount,
       totalSubtotal,
       count,
       avgPurchase: count > 0 ? totalSpent / count : 0
-    }
-    
+    };
+
     // Trigger animation after successful calculation
-    await nextTick()
-    showTotalSpentAnimation.value = true
+    await nextTick();
+    showTotalSpentAnimation.value = true;
   } catch (err) {
-    console.error('Failed to fetch aggregates:', err)
+    console.error('Failed to fetch aggregates:', err);
   } finally {
-    isLoadingAggregates.value = false
+    isLoadingAggregates.value = false;
   }
 }
 
 // Pagination computed properties
-const currentPage = computed(() => meta.value?.currentPage ?? 1)
-const lastPage = computed(() => meta.value?.lastPage ?? 1)
-const totalItems = computed(() => meta.value?.total ?? 0)
-const fromItem = computed(() => meta.value?.from ?? 0)
-const toItem = computed(() => meta.value?.to ?? 0)
+const currentPage = computed(() => meta.value?.currentPage ?? 1);
+const lastPage = computed(() => meta.value?.lastPage ?? 1);
+const totalItems = computed(() => meta.value?.total ?? 0);
+const fromItem = computed(() => meta.value?.from ?? 0);
+const toItem = computed(() => meta.value?.to ?? 0);
 
-const canGoPrev = computed(() => currentPage.value > 1)
-const canGoNext = computed(() => currentPage.value < lastPage.value)
+const canGoPrev = computed(() => currentPage.value > 1);
+const canGoNext = computed(() => currentPage.value < lastPage.value);
 
 // Pagination navigation
 async function goToPage(page: number) {
-  if (page < 1 || page > lastPage.value) return
-  filters.page = page
-  await fetchPurchases(buildFilterParams())
+  if (page < 1 || page > lastPage.value) return;
+  filters.page = page;
+  await fetchPurchases(buildFilterParams());
 }
 
 function goToPrevPage() {
-  if (canGoPrev.value) goToPage(currentPage.value - 1)
+  if (canGoPrev.value) goToPage(currentPage.value - 1);
 }
 
 function goToNextPage() {
-  if (canGoNext.value) goToPage(currentPage.value + 1)
+  if (canGoNext.value) goToPage(currentPage.value + 1);
 }
 
 async function handlePerPageChange(newPerPage: number) {
-  filters.perPage = newPerPage
-  filters.page = 1 // Reset to first page when changing perPage
-  await fetchPurchases(buildFilterParams())
+  filters.perPage = newPerPage;
+  filters.page = 1; // Reset to first page when changing perPage
+  await fetchPurchases(buildFilterParams());
 }
 
 const hasActiveFilters = computed(() => {
-  return Boolean(filters.shopId || filters.dateFrom || filters.dateTo || filters.includeLines || filters.status !== 'all')
-})
+  return Boolean(filters.shopId || filters.dateFrom || filters.dateTo || filters.includeLines || filters.status !== 'all');
+});
 
 async function handleApplyFilters() {
-  filters.page = 1 // Reset to first page when applying filters
-  const params = buildFilterParams()
+  filters.page = 1; // Reset to first page when applying filters
+  const params = buildFilterParams();
   await Promise.all([
     fetchPurchases(params).catch(err => console.error('Failed to apply filters:', err)),
     fetchAggregates()
-  ])
+  ]);
 }
 
 async function handleResetFilters() {
-  filters.shopId = null
-  filters.dateFrom = null
-  filters.dateTo = null
-  filters.status = 'all'
-  filters.includeLines = false
-  filters.page = 1
-  filters.perPage = DEFAULT_PER_PAGE
+  filters.shopId = null;
+  filters.dateFrom = null;
+  filters.dateTo = null;
+  filters.status = 'all';
+  filters.includeLines = false;
+  filters.page = 1;
+  filters.perPage = DEFAULT_PER_PAGE;
   await Promise.all([
     fetchPurchases({ perPage: filters.perPage, page: filters.page }),
     fetchAggregates()
-  ])
+  ]);
 }
 
 // Table configuration
@@ -302,9 +304,9 @@ interface PurchaseTableRow {
 }
 
 function createSortableHeader(label: string) {
-  return ({ column }: any) => {
-    const isSorted = column.getIsSorted()
-    const icon = isSorted ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow') : 'i-lucide-arrow-up-down'
+  return ({ column }: { column: { getIsSorted: () => false | 'asc' | 'desc', toggleSorting: (ascending?: boolean) => void } }) => {
+    const isSorted = column.getIsSorted();
+    const icon = isSorted ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow') : 'i-lucide-arrow-up-down';
 
     return h(UButton, {
       color: 'neutral',
@@ -314,88 +316,90 @@ function createSortableHeader(label: string) {
       icon,
       iconRight: true,
       onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
-    })
-  }
+    });
+  };
 }
 
-const isDeleteModalOpen = ref(false)
-const isDeleting = ref(false)
-const purchaseToDelete = ref<Purchase | null>(null)
+const isDeleteModalOpen = ref(false);
+const isDeleting = ref(false);
+const purchaseToDelete = ref<Purchase | null>(null);
 
 // Sorting state for TanStack Table
 const sorting = ref([
   { id: 'purchaseDateValue', desc: true }
-])
+]);
 
 const purchaseDateFormatter = new Intl.DateTimeFormat('de-DE', {
   day: '2-digit',
   month: '2-digit',
   year: 'numeric'
-})
+});
 
 const tableColumns: TableColumn<PurchaseTableRow>[] = [
-  { 
-    accessorKey: 'purchaseDateValue', 
+  {
+    accessorKey: 'purchaseDateValue',
     header: createSortableHeader('Date'),
-    cell: ({ row }: any) => row.original.purchaseDateDisplay ?? '—'
+    cell: ({ row }: { row: { original: { purchaseDateDisplay?: string | null } } }) => row.original.purchaseDateDisplay ?? '—'
   },
-  { 
-    accessorKey: 'shopName', 
+  {
+    accessorKey: 'shopName',
     header: createSortableHeader('Shop')
   },
-  { 
-    accessorKey: 'shopAddress', 
+  {
+    accessorKey: 'shopAddress',
     header: createSortableHeader('Address')
   },
-  { 
-    accessorKey: 'paymentMethod', 
+  {
+    accessorKey: 'paymentMethod',
     header: createSortableHeader('Payment'),
-    cell: ({ row }: any) => {
-      const method = row.original.paymentMethod
+    cell: ({ row }: { row: { original: { paymentMethod?: string } } }) => {
+      const method = row.original.paymentMethod;
       if (method === 'Not specified') {
-        return h('span', { class: 'text-muted text-sm' }, method)
+        return h('span', { class: 'text-muted text-sm' }, method);
       }
-      return h('span', { class: 'text-sm' }, method)
+      return h('span', { class: 'text-sm' }, method);
     }
   },
-  { 
-    accessorKey: 'totalAmountValue', 
+  {
+    accessorKey: 'totalAmountValue',
     header: createSortableHeader('Total'),
-    cell: ({ row }: any) => {
-      const purchase = row.original._original
-      const lineCount = purchase.lines?.length || 0
+    cell: ({ row }: { row: { original: { _original: Purchase, totalAmountDisplay?: string } } }) => {
+      const purchase = row.original._original;
+      const lineCount = purchase.lines?.length || 0;
       return h('div', { class: 'flex items-center gap-2' }, [
         h('span', {}, row.original.totalAmountDisplay),
-        lineCount > 0 ? h(UChip, { 
-          size: 'sm',
-          color: 'primary',
-          class: 'text-xs'
-        }, () => `${lineCount} ${lineCount === 1 ? 'line' : 'lines'}`) : null
-      ])
+        lineCount > 0
+          ? h(UChip, {
+              size: 'sm',
+              color: 'primary',
+              class: 'text-xs'
+            }, () => `${lineCount} ${lineCount === 1 ? 'line' : 'lines'}`)
+          : null
+      ]);
     }
   },
-  { 
-    accessorKey: 'status', 
+  {
+    accessorKey: 'status',
     header: createSortableHeader('Status'),
-    cell: ({ row }: any) => {
+    cell: ({ row }: { row: { original: { status?: PurchaseStatus } } }) => {
       const statusColors = {
         confirmed: 'green',
         draft: 'gray',
         cancelled: 'red'
-      }
+      };
       return h(UBadge, {
         color: statusColors[row.original.status as keyof typeof statusColors] || 'gray',
         variant: 'subtle'
-      }, () => row.original.status)
+      }, () => row.original.status);
     }
   },
   {
     id: 'actions',
     header: '',
-    cell: ({ row }: any) => {
-      const purchase = row.original._original
-      const hasLines = purchase.lines && purchase.lines.length > 0
-      
+    cell: ({ row }: { row: { original: { _original: Purchase }, getIsExpanded: () => boolean, toggleExpanded: () => void } }) => {
+      const purchase = row.original._original;
+      const hasLines = purchase.lines && purchase.lines.length > 0;
+
       return h('div', { class: 'flex items-center gap-1' }, [
         h(UButton, {
           icon: 'i-lucide-eye',
@@ -424,23 +428,23 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
           title: 'Delete purchase',
           onClick: () => openDeleteModal(purchase)
         })
-      ])
+      ]);
     },
     enableSorting: false,
     enableHiding: false
   }
-]
+];
 
 const tableRows = computed<PurchaseTableRow[]>(() => {
   return purchases.value.map((purchase: Purchase) => {
-    let purchaseDateValue: number | null = null
-    let purchaseDateDisplay: string | null = null
+    let purchaseDateValue: number | null = null;
+    let purchaseDateDisplay: string | null = null;
 
     if (purchase.purchaseDate) {
-      const parsed = new Date(purchase.purchaseDate)
+      const parsed = new Date(purchase.purchaseDate);
       if (!Number.isNaN(parsed.getTime())) {
-        purchaseDateValue = parsed.getTime()
-        purchaseDateDisplay = purchaseDateFormatter.format(parsed)
+        purchaseDateValue = parsed.getTime();
+        purchaseDateDisplay = purchaseDateFormatter.format(parsed);
       }
     }
 
@@ -455,19 +459,32 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
       totalAmountDisplay: `€${(purchase.totalAmount / 100).toFixed(2)}`,
       status: purchase.status,
       _original: purchase
-    }
-  })
-})
+    };
+  });
+});
 </script>
 
 <template>
   <UDashboardPanel id="purchases">
     <template #header>
-      <UDashboardNavbar title="Purchases" :links="breadcrumbs">
+      <UDashboardNavbar
+        title="Purchases"
+        :links="breadcrumbs"
+      >
         <template #right>
           <div class="flex gap-2">
-            <UButton to="/purchases/create" icon="i-lucide-plus" label="Add purchase" />
-            <UButton color="neutral" variant="outline" icon="i-lucide-download" label="Export" disabled />
+            <UButton
+              to="/purchases/create"
+              icon="i-lucide-plus"
+              label="Add purchase"
+            />
+            <UButton
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-download"
+              label="Export"
+              disabled
+            />
           </div>
         </template>
       </UDashboardNavbar>
@@ -475,7 +492,6 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
 
     <template #body>
       <div class="p-4 space-y-6">
-
         <UDashboardToolbar>
           <template #left>
             <USelectMenu
@@ -486,10 +502,28 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
               placeholder="Select shop"
               class="min-w-[220px]"
             />
-            <UInput v-model="filters.dateFrom" type="date" placeholder="Date from" class="min-w-[150px]" />
-            <UInput v-model="filters.dateTo" type="date" placeholder="Date to" class="min-w-[150px]" />
-            <USelectMenu v-model="filters.status" :items="statusOptions" value-key="value" class="min-w-[160px]" />
-            <USwitch v-model="filters.includeLines" label="Include lines" />
+            <UInput
+              v-model="filters.dateFrom"
+              type="date"
+              placeholder="Date from"
+              class="min-w-[150px]"
+            />
+            <UInput
+              v-model="filters.dateTo"
+              type="date"
+              placeholder="Date to"
+              class="min-w-[150px]"
+            />
+            <USelectMenu
+              v-model="filters.status"
+              :items="statusOptions"
+              value-key="value"
+              class="min-w-[160px]"
+            />
+            <USwitch
+              v-model="filters.includeLines"
+              label="Include lines"
+            />
           </template>
 
           <template #right>
@@ -517,26 +551,28 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
         <!-- Summary Stats -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <!-- Total Spent - Hero Card with Animation -->
-          <div 
+          <div
             class="total-spent-card p-4 rounded-lg border-2 transition-all duration-500"
             :class="[
               showTotalSpentAnimation ? 'total-spent-animate border-primary bg-primary/5 shadow-lg shadow-primary/20' : 'border-default bg-elevated'
             ]"
           >
             <div class="flex items-center gap-3">
-              <div 
+              <div
                 class="flex h-12 w-12 items-center justify-center rounded-full transition-all duration-500"
                 :class="showTotalSpentAnimation ? 'bg-primary/20 scale-110' : 'bg-primary/10'"
               >
-                <UIcon 
-                  name="i-lucide-wallet" 
+                <UIcon
+                  name="i-lucide-wallet"
                   class="h-6 w-6 text-primary transition-transform duration-500"
                   :class="{ 'scale-110': showTotalSpentAnimation }"
                 />
               </div>
               <div>
-                <p class="text-sm text-muted">Total Spent</p>
-                <p 
+                <p class="text-sm text-muted">
+                  Total Spent
+                </p>
+                <p
                   class="text-xl font-bold transition-all duration-500"
                   :class="[
                     isLoadingAggregates ? 'animate-pulse' : '',
@@ -552,11 +588,19 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
           <div class="p-4 bg-elevated rounded-lg border border-default">
             <div class="flex items-center gap-3">
               <div class="flex h-10 w-10 items-center justify-center rounded-full bg-info/10">
-                <UIcon name="i-lucide-shopping-bag" class="h-5 w-5 text-info" />
+                <UIcon
+                  name="i-lucide-shopping-bag"
+                  class="h-5 w-5 text-info"
+                />
               </div>
               <div>
-                <p class="text-sm text-muted">Purchases</p>
-                <p class="text-lg font-semibold" :class="{ 'animate-pulse': isLoadingAggregates }">
+                <p class="text-sm text-muted">
+                  Purchases
+                </p>
+                <p
+                  class="text-lg font-semibold"
+                  :class="{ 'animate-pulse': isLoadingAggregates }"
+                >
                   {{ aggregates.count }}
                 </p>
               </div>
@@ -566,11 +610,19 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
           <div class="p-4 bg-elevated rounded-lg border border-default">
             <div class="flex items-center gap-3">
               <div class="flex h-10 w-10 items-center justify-center rounded-full bg-success/10">
-                <UIcon name="i-lucide-calculator" class="h-5 w-5 text-success" />
+                <UIcon
+                  name="i-lucide-calculator"
+                  class="h-5 w-5 text-success"
+                />
               </div>
               <div>
-                <p class="text-sm text-muted">Avg. Purchase</p>
-                <p class="text-lg font-semibold" :class="{ 'animate-pulse': isLoadingAggregates }">
+                <p class="text-sm text-muted">
+                  Avg. Purchase
+                </p>
+                <p
+                  class="text-lg font-semibold"
+                  :class="{ 'animate-pulse': isLoadingAggregates }"
+                >
                   €{{ (aggregates.avgPurchase / 100).toFixed(2) }}
                 </p>
               </div>
@@ -580,11 +632,19 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
           <div class="p-4 bg-elevated rounded-lg border border-default">
             <div class="flex items-center gap-3">
               <div class="flex h-10 w-10 items-center justify-center rounded-full bg-error/10">
-                <UIcon name="i-lucide-percent" class="h-5 w-5 text-error" />
+                <UIcon
+                  name="i-lucide-percent"
+                  class="h-5 w-5 text-error"
+                />
               </div>
               <div>
-                <p class="text-sm text-muted">Total Discount</p>
-                <p class="text-lg font-semibold" :class="{ 'animate-pulse': isLoadingAggregates }">
+                <p class="text-sm text-muted">
+                  Total Discount
+                </p>
+                <p
+                  class="text-lg font-semibold"
+                  :class="{ 'animate-pulse': isLoadingAggregates }"
+                >
                   €{{ (aggregates.totalDiscount / 100).toFixed(2) }}
                 </p>
               </div>
@@ -597,8 +657,12 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
           <template #header>
             <div class="flex items-center justify-between">
               <div>
-                <h3 class="text-lg font-semibold">Purchases List</h3>
-                <p class="text-sm text-muted">{{ totalItems }} purchase(s) total</p>
+                <h3 class="text-lg font-semibold">
+                  Purchases List
+                </h3>
+                <p class="text-sm text-muted">
+                  {{ totalItems }} purchase(s) total
+                </p>
               </div>
             </div>
           </template>
@@ -613,31 +677,64 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
             <template #expanded="{ row }">
               <div class="p-4 bg-elevated/30">
                 <div v-if="row.original._original.lines && row.original._original.lines.length > 0">
-                  <h4 class="text-sm font-semibold mb-3 text-highlighted">Line Items</h4>
+                  <h4 class="text-sm font-semibold mb-3 text-highlighted">
+                    Line Items
+                  </h4>
                   <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                       <thead class="border-b border-default">
                         <tr class="text-left text-muted">
-                          <th class="pb-2 pr-4">#</th>
-                          <th class="pb-2 pr-4">Description</th>
-                          <th class="pb-2 pr-4 text-right">Qty</th>
-                          <th class="pb-2 pr-4 text-right">Unit Price</th>
-                          <th class="pb-2 pr-4 text-right">Tax</th>
-                          <th class="pb-2 pr-4 text-right">Discount</th>
-                          <th class="pb-2 text-right">Subtotal</th>
+                          <th class="pb-2 pr-4">
+                            #
+                          </th>
+                          <th class="pb-2 pr-4">
+                            Description
+                          </th>
+                          <th class="pb-2 pr-4 text-right">
+                            Qty
+                          </th>
+                          <th class="pb-2 pr-4 text-right">
+                            Unit Price
+                          </th>
+                          <th class="pb-2 pr-4 text-right">
+                            Tax
+                          </th>
+                          <th class="pb-2 pr-4 text-right">
+                            Discount
+                          </th>
+                          <th class="pb-2 text-right">
+                            Subtotal
+                          </th>
                         </tr>
                       </thead>
                       <tbody class="divide-y divide-default">
-                        <tr v-for="line in row.original._original.lines" :key="line.id" class="text-default">
-                          <td class="py-2 pr-4 text-muted">{{ line.lineNumber }}</td>
+                        <tr
+                          v-for="line in row.original._original.lines"
+                          :key="line.id"
+                          class="text-default"
+                        >
+                          <td class="py-2 pr-4 text-muted">
+                            {{ line.lineNumber }}
+                          </td>
                           <td class="py-2 pr-4 font-medium">
                             {{ line.description }}
-                            <span v-if="line.notes" class="block text-xs text-muted mt-0.5">{{ line.notes }}</span>
+                            <span
+                              v-if="line.notes"
+                              class="block text-xs text-muted mt-0.5"
+                            >{{ line.notes }}</span>
                           </td>
-                          <td class="py-2 pr-4 text-right">{{ line.quantity }}</td>
-                          <td class="py-2 pr-4 text-right">€{{ (line.unitPrice / 100).toFixed(2) }}</td>
-                          <td class="py-2 pr-4 text-right">{{ line.taxRate }}%</td>
-                          <td class="py-2 pr-4 text-right">{{ line.discountPercent ? `${line.discountPercent}%` : '—' }}</td>
+                          <td class="py-2 pr-4 text-right">
+                            {{ line.quantity }}
+                          </td>
+                          <td class="py-2 pr-4 text-right">
+                            €{{ (line.unitPrice / 100).toFixed(2) }}
+                          </td>
+                          <td class="py-2 pr-4 text-right">
+                            {{ line.taxRate }}%
+                          </td>
+                          <td class="py-2 pr-4 text-right">
+                            {{ line.discountPercent ? `${line.discountPercent}%` : '—' }}
+                          </td>
                           <td class="py-2 text-right font-medium">
                             €{{ ((line.quantity * line.unitPrice * (1 - (line.discountPercent || 0) / 100)) / 100).toFixed(2) }}
                           </td>
@@ -646,7 +743,10 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
                     </table>
                   </div>
                 </div>
-                <div v-else class="text-sm text-muted text-center py-4">
+                <div
+                  v-else
+                  class="text-sm text-muted text-center py-4"
+                >
                   <p>No line items available. Enable "Include lines" filter and reload.</p>
                 </div>
               </div>
@@ -684,7 +784,7 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
                     class="btn-standard"
                     @click="goToPrevPage"
                   />
-                  
+
                   <span class="text-sm text-default min-w-[80px] text-center">
                     Page {{ currentPage }} of {{ lastPage }}
                   </span>
@@ -714,34 +814,54 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
         <template #header>
           <div class="flex items-center gap-3">
             <div class="flex h-10 w-10 items-center justify-center rounded-full bg-error/10 flex-shrink-0">
-              <UIcon name="i-lucide-alert-triangle" class="h-5 w-5 text-error" />
+              <UIcon
+                name="i-lucide-alert-triangle"
+                class="h-5 w-5 text-error"
+              />
             </div>
-            <h3 class="text-lg font-semibold">Delete Purchase</h3>
+            <h3 class="text-lg font-semibold">
+              Delete Purchase
+            </h3>
           </div>
         </template>
 
         <div class="space-y-4">
-          <p class="text-sm text-muted">This action cannot be undone.</p>
+          <p class="text-sm text-muted">
+            This action cannot be undone.
+          </p>
           <p class="text-sm text-default">
             Are you sure you want to delete
             <strong>Purchase #{{ purchaseToDelete?.id ?? '—' }}</strong>?
           </p>
 
-          <div v-if="purchaseToDelete" class="p-4 bg-elevated rounded-lg border border-default">
+          <div
+            v-if="purchaseToDelete"
+            class="p-4 bg-elevated rounded-lg border border-default"
+          >
             <dl class="space-y-2 text-sm">
               <div class="flex justify-between">
-                <dt class="text-muted">Date:</dt>
+                <dt class="text-muted">
+                  Date:
+                </dt>
                 <dd class="font-medium">
                   {{ purchaseToDelete.purchaseDate ? new Date(purchaseToDelete.purchaseDate).toLocaleDateString('en-US') : '—' }}
                 </dd>
               </div>
               <div class="flex justify-between">
-                <dt class="text-muted">Shop:</dt>
-                <dd class="font-medium">{{ purchaseToDelete.shop?.name ?? `Shop #${purchaseToDelete.shopId}` }}</dd>
+                <dt class="text-muted">
+                  Shop:
+                </dt>
+                <dd class="font-medium">
+                  {{ purchaseToDelete.shop?.name ?? `Shop #${purchaseToDelete.shopId}` }}
+                </dd>
               </div>
               <div class="flex justify-between">
-                <dt class="text-muted">Total:</dt>
-                <dd class="font-medium">€{{ (purchaseToDelete.totalAmount / 100).toFixed(2) }}</dd>
+                <dt class="text-muted">
+                  Total:
+                </dt>
+                <dd class="font-medium">
+                  €{{ (purchaseToDelete.totalAmount / 100).toFixed(2) }}
+                </dd>
               </div>
             </dl>
           </div>

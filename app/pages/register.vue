@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
+import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui';
 
 definePageMeta({
   layout: 'plain',
   middleware: 'guest'
-})
+});
 
 const { register } = useAuth();
 
-async function registerUser(event: FormSubmitEvent) {
+async function registerUser(event: FormSubmitEvent<{ name: string, email: string, password: string, password_confirmation: string }>) {
   await register(event.data);
 }
 
@@ -21,7 +21,7 @@ const fields = ref<AuthFormField[]>([
     required: true
   }, {
     name: 'email',
-    type: 'email', 
+    type: 'email',
     label: 'Email',
     placeholder: 'Enter your email',
     required: true
@@ -38,7 +38,7 @@ const fields = ref<AuthFormField[]>([
     placeholder: 'Confirm your password',
     required: true
   }
-])
+]);
 </script>
 
 <template>
@@ -57,4 +57,3 @@ const fields = ref<AuthFormField[]>([
     </template>
   </UDashboardPanel>
 </template>
-

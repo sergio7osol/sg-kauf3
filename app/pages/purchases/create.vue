@@ -1,54 +1,53 @@
 <script setup lang="ts">
-import * as z from 'zod'
-import type { FormSubmitEvent } from '@nuxt/ui'
-import { usePurchases } from '~/composables/usePurchases'
-import { useShops } from '~/composables/useShops'
-import { useUserPaymentMethods } from '~/composables/useUserPaymentMethods'
-import { eurosToCents, centsToEuros, formatCents } from '~/utils/money'
-import type { Shop, ShopAddress, PurchaseStatus, ParsedReceiptData } from '~/types'
+import axios from 'axios';
+import { usePurchases } from '~/composables/usePurchases';
+import { useShops } from '~/composables/useShops';
+import { useUserPaymentMethods } from '~/composables/useUserPaymentMethods';
+import { eurosToCents, centsToEuros, formatCents } from '~/utils/money';
+import type { Shop, ShopAddress, PurchaseStatus, ParsedReceiptData, UserPaymentMethod } from '~/types';
 
 definePageMeta({
   middleware: ['auth']
-})
+});
 
-const router = useRouter()
-const toast = useToast()
+const router = useRouter();
+const toast = useToast();
 
 // Composables
-const { createPurchase } = usePurchases()
-const { shops, fetchShops, isLoading: shopsLoading } = useShops()
-const { 
-  activePaymentMethods, 
-  fetchPaymentMethods, 
-  isLoading: paymentMethodsLoading 
-} = useUserPaymentMethods()
+const { createPurchase } = usePurchases();
+const { shops, fetchShops, isLoading: shopsLoading } = useShops();
+const {
+  activePaymentMethods,
+  fetchPaymentMethods,
+  isLoading: paymentMethodsLoading
+} = useUserPaymentMethods();
 
 // Breadcrumbs
 const breadcrumbs = [
   { label: 'Dashboard', to: '/' },
   { label: 'Purchases', to: '/purchases' },
   { label: 'New Purchase', to: '/purchases/create' }
-]
+];
 
 // Form state
-const isSubmitting = ref(false)
+const isSubmitting = ref(false);
 
 // Receipt upload modal state
-const receiptModalOpen = ref(false)
-const wasImportedFromReceipt = ref(false)
-const importWarnings = ref<string[]>([])
-const importedAddressLabel = ref<string | null>(null)
+const receiptModalOpen = ref(false);
+const wasImportedFromReceipt = ref(false);
+const importWarnings = ref<string[]>([]);
+const importedAddressLabel = ref<string | null>(null);
 
 // Purchase header state
-const selectedShopId = ref<number | null>(null)
-const selectedAddressId = ref<number | null>(null)
-const selectedPaymentMethodId = ref<number | null>(null)
-const purchaseDate = ref(new Date().toISOString().split('T')[0]) // Today
-const purchaseTime = ref<string | null>(null)
-const currency = ref('EUR')
-const status = ref<PurchaseStatus>('confirmed')
-const notes = ref('')
-const receiptNumber = ref('')
+const selectedShopId = ref<number | undefined>(undefined);
+const selectedAddressId = ref<number | undefined>(undefined);
+const selectedPaymentMethodId = ref<number | undefined>(undefined);
+const purchaseDate = ref(new Date().toISOString().split('T')[0]); // Today
+const purchaseTime = ref<string | null>(null);
+const currency = ref('EUR');
+const status = ref<PurchaseStatus>('confirmed');
+const notes = ref('');
+const receiptNumber = ref('');
 
 // Line items state
 interface LineItem {
@@ -64,7 +63,7 @@ interface LineItem {
 
 const lines = ref<LineItem[]>([
   createEmptyLine()
-])
+]);
 
 function createEmptyLine(): LineItem {
   return {
@@ -76,15 +75,15 @@ function createEmptyLine(): LineItem {
     discountPercent: null,
     discountAmountEuros: 0,
     notes: ''
-  }
+  };
 }
 
 // Computed: Available addresses for selected shop
 const availableAddresses = computed<ShopAddress[]>(() => {
-  if (!selectedShopId.value) return []
-  const shop = shops.value.find((s: Shop) => s.id === selectedShopId.value)
-  return shop?.addresses?.filter((a: ShopAddress) => a.isActive) ?? []
-})
+  if (!selectedShopId.value) return [];
+  const shop = shops.value.find((s: Shop) => s.id === selectedShopId.value);
+  return shop?.addresses?.filter((a: ShopAddress) => a.isActive) ?? [];
+});
 
 // Computed: Shop options for dropdown
 const shopOptions = computed(() => {
@@ -93,115 +92,115 @@ const shopOptions = computed(() => {
     .map((s: Shop) => ({
       label: s.name,
       value: s.id
-    }))
-})
+    }));
+});
 
 // Computed: Address options for dropdown
 const addressOptions = computed(() => {
   const baseOptions = availableAddresses.value.map((a: ShopAddress) => ({
     label: `${a.street} ${a.houseNumber}, ${a.postalCode} ${a.city}`,
     value: a.id
-  }))
+  }));
 
-  const hasSelectedAddress = baseOptions.some(option => option.value === selectedAddressId.value)
+  const hasSelectedAddress = baseOptions.some(option => option.value === selectedAddressId.value);
   if (!hasSelectedAddress && selectedAddressId.value && importedAddressLabel.value) {
     baseOptions.unshift({
       label: importedAddressLabel.value,
       value: selectedAddressId.value
-    })
+    });
   }
 
-  return baseOptions
-})
+  return baseOptions;
+});
 
 // Computed: Payment method options for dropdown
 const paymentMethodOptions = computed(() => {
-  const options = [{ label: 'No payment method', value: null }]
-  activePaymentMethods.value.forEach((pm: any) => {
-    options.push({ label: pm.name, value: pm.id })
-  })
-  return options
-})
+  const options: Array<{ label: string, value: number | null }> = [{ label: 'No payment method', value: null }];
+  activePaymentMethods.value.forEach((pm: UserPaymentMethod) => {
+    options.push({ label: pm.name, value: pm.id });
+  });
+  return options;
+});
 
 // Computed: Status options
 const statusOptions = [
   { label: 'Confirmed', value: 'confirmed' },
   { label: 'Draft', value: 'draft' },
   { label: 'Cancelled', value: 'cancelled' }
-]
+];
 
 // Computed: Calculate line amount
 function calculateLineAmount(line: LineItem): number {
-  const unitPriceCents = eurosToCents(line.unitPriceEuros)
-  const subtotal = line.quantity * unitPriceCents
-  const percentDiscount = line.discountPercent ? subtotal * (line.discountPercent / 100) : 0
-  const absoluteDiscount = eurosToCents(line.discountAmountEuros)
-  return Math.round(subtotal - percentDiscount - absoluteDiscount)
+  const unitPriceCents = eurosToCents(line.unitPriceEuros);
+  const subtotal = line.quantity * unitPriceCents;
+  const percentDiscount = line.discountPercent ? subtotal * (line.discountPercent / 100) : 0;
+  const absoluteDiscount = eurosToCents(line.discountAmountEuros);
+  return Math.round(subtotal - percentDiscount - absoluteDiscount);
 }
 
 // Check if a line has any discount applied
 function lineHasDiscount(line: LineItem): boolean {
-  return (line.discountPercent != null && line.discountPercent > 0) || line.discountAmountEuros > 0
+  return (line.discountPercent != null && line.discountPercent > 0) || line.discountAmountEuros > 0;
 }
 
 function normalizeTimeForInput(time: string | null): string | null {
-  if (!time) return null
-  const trimmed = time.trim()
-  if (!trimmed) return null
+  if (!time) return null;
+  const trimmed = time.trim();
+  if (!trimmed) return null;
   // Backend may return HH:MM:SS; native time inputs usually expect HH:MM
-  return trimmed.length >= 5 ? trimmed.slice(0, 5) : trimmed
+  return trimmed.length >= 5 ? trimmed.slice(0, 5) : trimmed;
 }
 
 function normalizeTimeForSubmit(time: string | null): string | null {
-  if (!time) return null
-  const trimmed = time.trim()
-  return trimmed ? trimmed : null
+  if (!time) return null;
+  const trimmed = time.trim();
+  return trimmed ? trimmed : null;
 }
 
 // Computed: Total amount
 const totalAmountCents = computed(() => {
-  return lines.value.reduce((sum, line) => sum + calculateLineAmount(line), 0)
-})
+  return lines.value.reduce((sum, line) => sum + calculateLineAmount(line), 0);
+});
 
 // Computed: Check if form is valid for submission
 const isFormValid = computed(() => {
   return (
-    selectedShopId.value !== null &&
-    selectedAddressId.value !== null &&
-    purchaseDate.value &&
-    lines.value.length > 0 &&
-    lines.value.every(line => line.description.trim() && line.quantity > 0 && line.unitPriceEuros >= 0)
-  )
-})
+    selectedShopId.value !== undefined
+    && selectedAddressId.value !== undefined
+    && purchaseDate.value
+    && lines.value.length > 0
+    && lines.value.every(line => line.description.trim() && line.quantity > 0 && line.unitPriceEuros >= 0)
+  );
+});
 
 // Watch: Reset address when shop changes
 watch(selectedShopId, (newShopId) => {
-  selectedAddressId.value = null
-  importedAddressLabel.value = null
+  selectedAddressId.value = undefined;
+  importedAddressLabel.value = null;
   // Auto-select first address if only one
   if (newShopId) {
-    const addresses = availableAddresses.value
-    if (addresses.length === 1) {
-      selectedAddressId.value = addresses[0].id
+    const addresses = availableAddresses.value;
+    if (addresses.length === 1 && addresses[0]) {
+      selectedAddressId.value = addresses[0].id;
     }
   }
-})
+});
 
 // Actions: Line management
 function addLine() {
-  lines.value.push(createEmptyLine())
+  lines.value.push(createEmptyLine());
 }
 
 function removeLine(id: string) {
   if (lines.value.length > 1) {
-    lines.value = lines.value.filter(line => line.id !== id)
+    lines.value = lines.value.filter(line => line.id !== id);
   }
 }
 
 function duplicateLine(line: LineItem) {
-  const newLine = { ...line, id: crypto.randomUUID() }
-  const index = lines.value.findIndex(l => l.id === line.id)
-  lines.value.splice(index + 1, 0, newLine)
+  const newLine = { ...line, id: crypto.randomUUID() };
+  const index = lines.value.findIndex(l => l.id === line.id);
+  lines.value.splice(index + 1, 0, newLine);
 }
 
 // Load data on mount
@@ -209,8 +208,8 @@ onMounted(async () => {
   await Promise.all([
     fetchShops({ includeAddresses: 1 }).catch(err => console.error('Failed to load shops:', err)),
     fetchPaymentMethods().catch(err => console.error('Failed to load payment methods:', err))
-  ])
-})
+  ]);
+});
 
 // Submit handler
 async function handleSubmit() {
@@ -220,18 +219,18 @@ async function handleSubmit() {
       description: 'Please fill in all required fields.',
       icon: 'i-lucide-alert-circle',
       color: 'error'
-    })
-    return
+    });
+    return;
   }
 
-  isSubmitting.value = true
+  isSubmitting.value = true;
 
   try {
     const payload = {
       shopId: selectedShopId.value!,
       shopAddressId: selectedAddressId.value!,
       userPaymentMethodId: selectedPaymentMethodId.value,
-      purchaseDate: purchaseDate.value,
+      purchaseDate: purchaseDate.value!,
       purchaseTime: normalizeTimeForSubmit(purchaseTime.value),
       currency: currency.value,
       status: status.value,
@@ -247,42 +246,44 @@ async function handleSubmit() {
         discountAmount: eurosToCents(line.discountAmountEuros),
         notes: line.notes || null
       }))
-    }
+    };
 
-    await createPurchase(payload)
+    await createPurchase(payload);
 
     toast.add({
       title: 'Purchase Created',
       description: `Purchase of ${formatCents(totalAmountCents.value)} created successfully.`,
       icon: 'i-lucide-check',
       color: 'success'
-    })
+    });
 
     // Navigate to purchases list
-    await router.push('/purchases')
-  } catch (err: any) {
-    const errorMessage = err?.response?.data?.message || 'Failed to create purchase. Please try again.'
-    const errors = err?.response?.data?.errors
+    await router.push('/purchases');
+  } catch (err: unknown) {
+    const errorMessage = axios.isAxiosError(err)
+      ? err.response?.data?.message ?? 'Failed to create purchase. Please try again.'
+      : 'Failed to create purchase. Please try again.';
+    const errors = axios.isAxiosError(err) ? err.response?.data?.errors : undefined;
 
     toast.add({
       title: 'Error',
       description: errorMessage,
       icon: 'i-lucide-alert-circle',
       color: 'error'
-    })
+    });
 
     // Log validation errors for debugging
     if (errors) {
-      console.error('Validation errors:', errors)
+      console.error('Validation errors:', errors);
     }
   } finally {
-    isSubmitting.value = false
+    isSubmitting.value = false;
   }
 }
 
 // Cancel handler
 function handleCancel() {
-  router.push('/purchases')
+  router.push('/purchases');
 }
 
 /**
@@ -292,34 +293,34 @@ function handleCancel() {
 function applyParsedReceipt(data: ParsedReceiptData) {
   // Set shop if matched
   if (data.shop.id) {
-    selectedShopId.value = data.shop.id
+    selectedShopId.value = data.shop.id;
     // Address will be set after shop changes trigger availableAddresses update
     nextTick(() => {
       if (data.address.id) {
-        selectedAddressId.value = data.address.id
-        importedAddressLabel.value = data.address.display ?? null
+        selectedAddressId.value = data.address.id;
+        importedAddressLabel.value = data.address.display ?? null;
       }
-    })
+    });
   } else {
-    importedAddressLabel.value = null
+    importedAddressLabel.value = null;
   }
 
   // Set purchase date
   if (data.purchaseDate) {
-    purchaseDate.value = data.purchaseDate
+    purchaseDate.value = data.purchaseDate;
   }
 
   // Set notes with time if available
-  purchaseTime.value = normalizeTimeForInput(data.purchaseTime)
+  purchaseTime.value = normalizeTimeForInput(data.purchaseTime);
 
   // Set currency
   if (data.currency) {
-    currency.value = data.currency
+    currency.value = data.currency;
   }
 
   // Map items to line items
   if (data.items && data.items.length > 0) {
-    lines.value = data.items.map((item) => ({
+    lines.value = data.items.map(item => ({
       id: crypto.randomUUID(),
       description: item.name,
       quantity: item.quantity,
@@ -328,31 +329,34 @@ function applyParsedReceipt(data: ParsedReceiptData) {
       discountPercent: null,
       discountAmountEuros: centsToEuros(item.submitDiscountAmount), // Convert cents to euros
       notes: item.isDiscount ? 'Discount/Rabatt' : ''
-    }))
+    }));
   }
 
   // Track that form was imported
-  wasImportedFromReceipt.value = true
+  wasImportedFromReceipt.value = true;
 
   // Collect warnings for display
-  const warnings: string[] = []
+  const warnings: string[] = [];
   if (!data.shop.id) {
-    warnings.push(`Shop "${data.shop.name}" was not matched - please select manually`)
+    warnings.push(`Shop "${data.shop.name}" was not matched - please select manually`);
   }
   if (!data.address.id) {
-    warnings.push(`Address "${data.address.display}" was not matched - please select manually`)
+    warnings.push(`Address "${data.address.display}" was not matched - please select manually`);
   } else {
-    importedAddressLabel.value = data.address.display
+    importedAddressLabel.value = data.address.display;
   }
-  warnings.push('Payment method was not detected - please select manually')
-  importWarnings.value = warnings
+  warnings.push('Payment method was not detected - please select manually');
+  importWarnings.value = warnings;
 }
 </script>
 
 <template>
   <UDashboardPanel id="purchase-create">
     <template #header>
-      <UDashboardNavbar title="New Purchase" :links="breadcrumbs">
+      <UDashboardNavbar
+        title="New Purchase"
+        :links="breadcrumbs"
+      >
         <template #right>
           <div class="flex gap-2">
             <!-- Receipt Upload Modal -->
@@ -396,7 +400,12 @@ function applyParsedReceipt(data: ParsedReceiptData) {
         >
           <template #description>
             <ul class="list-disc list-inside space-y-1 mt-1">
-              <li v-for="(warning, idx) in importWarnings" :key="idx">{{ warning }}</li>
+              <li
+                v-for="(warning, idx) in importWarnings"
+                :key="idx"
+              >
+                {{ warning }}
+              </li>
             </ul>
           </template>
         </UAlert>
@@ -416,12 +425,17 @@ function applyParsedReceipt(data: ParsedReceiptData) {
         <!-- Purchase Details Card -->
         <UCard>
           <template #header>
-            <h3 class="text-lg font-semibold">Purchase Details</h3>
+            <h3 class="text-lg font-semibold">
+              Purchase Details
+            </h3>
           </template>
 
           <div class="grid gap-4 md:grid-cols-2">
             <!-- Shop Selection -->
-            <UFormField label="Shop" required>
+            <UFormField
+              label="Shop"
+              required
+            >
               <USelectMenu
                 v-model="selectedShopId"
                 :items="shopOptions"
@@ -433,7 +447,10 @@ function applyParsedReceipt(data: ParsedReceiptData) {
             </UFormField>
 
             <!-- Address Selection -->
-            <UFormField label="Address" required>
+            <UFormField
+              label="Address"
+              required
+            >
               <USelectMenu
                 v-model="selectedAddressId"
                 :items="addressOptions"
@@ -442,14 +459,20 @@ function applyParsedReceipt(data: ParsedReceiptData) {
                 :placeholder="!selectedShopId ? 'Select shop first' : 'Select address...'"
                 class="w-full"
               />
-              <template v-if="selectedShopId && addressOptions.length === 0" #hint>
+              <template
+                v-if="selectedShopId && addressOptions.length === 0"
+                #hint
+              >
                 <span class="text-warning">No addresses found for this shop.</span>
               </template>
             </UFormField>
 
             <!-- Purchase Date + Time -->
             <div class="md:col-span-2 grid gap-4 md:grid-cols-2">
-              <UFormField label="Date" required>
+              <UFormField
+                label="Date"
+                required
+              >
                 <UInput
                   v-model="purchaseDate"
                   type="date"
@@ -518,8 +541,12 @@ function applyParsedReceipt(data: ParsedReceiptData) {
           <template #header>
             <div class="flex items-center justify-between">
               <div>
-                <h3 class="text-lg font-semibold">Line Items</h3>
-                <p class="text-sm text-muted">{{ lines.length }} item(s)</p>
+                <h3 class="text-lg font-semibold">
+                  Line Items
+                </h3>
+                <p class="text-sm text-muted">
+                  {{ lines.length }} item(s)
+                </p>
               </div>
               <UButton
                 color="primary"
@@ -565,7 +592,10 @@ function applyParsedReceipt(data: ParsedReceiptData) {
               <div class="grid gap-3 md:grid-cols-12">
                 <!-- Description -->
                 <div class="md:col-span-5">
-                  <UFormField label="Description" required>
+                  <UFormField
+                    label="Description"
+                    required
+                  >
                     <UInput
                       v-model="line.description"
                       placeholder="Item description..."
@@ -640,8 +670,14 @@ function applyParsedReceipt(data: ParsedReceiptData) {
           </div>
 
           <!-- Empty State -->
-          <div v-if="lines.length === 0" class="py-8 text-center text-muted">
-            <UIcon name="i-lucide-package" class="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <div
+            v-if="lines.length === 0"
+            class="py-8 text-center text-muted"
+          >
+            <UIcon
+              name="i-lucide-package"
+              class="w-12 h-12 mx-auto mb-2 opacity-50"
+            />
             <p>No items added yet</p>
             <UButton
               color="primary"
@@ -657,13 +693,19 @@ function applyParsedReceipt(data: ParsedReceiptData) {
         <!-- Totals Card -->
         <UCard>
           <template #header>
-            <h3 class="text-lg font-semibold">Summary</h3>
+            <h3 class="text-lg font-semibold">
+              Summary
+            </h3>
           </template>
 
           <dl class="space-y-3">
             <div class="flex justify-between text-sm">
-              <dt class="text-muted">Items</dt>
-              <dd class="font-medium">{{ lines.length }}</dd>
+              <dt class="text-muted">
+                Items
+              </dt>
+              <dd class="font-medium">
+                {{ lines.length }}
+              </dd>
             </div>
             <div class="flex justify-between text-lg font-semibold pt-3 border-t border-default">
               <dt>Total</dt>

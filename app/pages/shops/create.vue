@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import axios, { type AxiosError } from 'axios'
-import type { FormSubmitEvent } from '@nuxt/ui'
+import axios, { type AxiosError } from 'axios';
+import type { FormSubmitEvent } from '@nuxt/ui';
 import {
   SHOP_COUNTRIES,
   SHOP_TYPES,
@@ -8,46 +8,50 @@ import {
   createShopFormState,
   extractValidationErrors,
   shopFormSchema,
-  type ShopFormState
-} from '~/composables/useShopForm'
+  type ShopFormState,
+  type ValidatedShopFormState
+} from '~/composables/useShopForm';
 
-const router = useRouter()
+const router = useRouter();
 
-const state = reactive<ShopFormState>(createShopFormState())
+const state = reactive<ShopFormState>(createShopFormState());
 
 // Form submission
-const submitting = ref(false)
-const formErrors = ref<Record<string, string>>({})
+const submitting = ref(false);
+const formErrors = ref<Record<string, string>>({});
 
-async function onSubmit(event: FormSubmitEvent<ShopFormState>) {
-  submitting.value = true
-  formErrors.value = {}
+async function onSubmit(event: FormSubmitEvent<ValidatedShopFormState>) {
+  submitting.value = true;
+  formErrors.value = {};
 
   try {
-    const payload = buildShopPayload(event.data)
+    const payload = buildShopPayload(event.data);
 
-    console.log('Axios baseURL:', axios.defaults.baseURL)
-    console.log('Submitting payload:', payload)
-    console.log('Axios headers:', axios.defaults.headers.common)
-    console.log('withCredentials:', axios.defaults.withCredentials)
-    console.log('Document cookies:', document.cookie)
-    
-    await axios.post('/shops', payload)
-    await router.push('/shops')
+    console.log('Axios baseURL:', axios.defaults.baseURL);
+    console.log('Submitting payload:', payload);
+    console.log('Axios headers:', axios.defaults.headers.common);
+    console.log('withCredentials:', axios.defaults.withCredentials);
+    console.log('Document cookies:', document.cookie);
+
+    await axios.post('/shops', payload);
+    await router.push('/shops');
   } catch (error) {
-    const axiosError = error as AxiosError<{ message: string; errors?: Record<string, string[]> }>
-    const backendErrors = extractValidationErrors(axiosError)
+    const axiosError = error as AxiosError<{ message: string, errors?: Record<string, string[]> }>;
+    const backendErrors = extractValidationErrors(axiosError);
 
     if (backendErrors) {
-      Object.keys(backendErrors).forEach(key => {
-        formErrors.value[key] = backendErrors[key][0]
-      })
+      Object.keys(backendErrors).forEach((key) => {
+        const errors = backendErrors[key];
+        if (errors && errors[0]) {
+          formErrors.value[key] = errors[0];
+        }
+      });
     } else {
-      console.error('Shop creation failed:', error)
+      console.error('Shop creation failed:', error);
       // Could show a toast notification here
     }
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
 }
 </script>
@@ -146,7 +150,7 @@ async function onSubmit(event: FormSubmitEvent<ShopFormState>) {
               Create Shop
             </UButton>
             <UButton
-              color="gray"
+              color="neutral"
               variant="ghost"
               size="lg"
               :disabled="submitting"

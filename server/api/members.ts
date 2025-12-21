@@ -53,8 +53,8 @@ const members = [{
   username: 'Atinux',
   role: 'owner',
   avatar: { src: 'https://ipx.nuxt.com/f_auto,s_192x192/gh_avatar/atinux' }
-}]
+}];
 
 export default eventHandler(async () => {
-  return members
-})
+  return members;
+});
