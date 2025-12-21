@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
-import type { LoginCredentials } from '~/composables/useAuth'
+import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui';
+import type { LoginCredentials } from '~/composables/useAuth';
 
 definePageMeta({
   layout: 'plain',
   middleware: 'guest'
-})
+});
 
 const { login: authLogin } = useAuth();
 
@@ -32,7 +32,7 @@ const fields = ref<AuthFormField[]>([
     placeholder: 'Enter your password',
     required: true
   }
-])
+]);
 </script>
 
 <template>

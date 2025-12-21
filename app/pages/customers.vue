@@ -1,33 +1,35 @@
 <script setup lang="ts">
-import type { TableColumn } from '@nuxt/ui'
-import { upperFirst } from 'scule'
-import { getPaginationRowModel } from '@tanstack/table-core'
-import type { Row } from '@tanstack/table-core'
-import type { User } from '~/types'
+import type { TableColumn } from '@nuxt/ui';
+import { upperFirst } from 'scule';
+import { getPaginationRowModel } from '@tanstack/table-core';
+import type { Row } from '@tanstack/table-core';
+import type { User } from '~/types';
 
 definePageMeta({
   middleware: ['auth']
-})
+});
 
-const UAvatar = resolveComponent('UAvatar')
-const UButton = resolveComponent('UButton')
-const UBadge = resolveComponent('UBadge')
-const UDropdownMenu = resolveComponent('UDropdownMenu')
-const UCheckbox = resolveComponent('UCheckbox')
+const UAvatar = resolveComponent('UAvatar');
+const UButton = resolveComponent('UButton');
+const UBadge = resolveComponent('UBadge');
+const UDropdownMenu = resolveComponent('UDropdownMenu');
+const UCheckbox = resolveComponent('UCheckbox');
 
 const toast = useToast();
 const table = useTemplateRef('table');
 
-const columnFilters = ref([{
-  id: 'email',
-  value: ''
-}])
-const columnVisibility = ref()
-const rowSelection = ref({ 1: true })
+const columnFilters = ref([
+  {
+    id: 'email',
+    value: ''
+  }
+]);
+const columnVisibility = ref<Record<string, boolean> | undefined>();
+const rowSelection = ref<Record<number, boolean>>({ 1: true });
 
 const { data, status } = await useFetch<User[]>('/api/customers', {
   lazy: true
-})
+});
 
 function getRowItems(row: Row<User>) {
   return [
@@ -39,11 +41,11 @@ function getRowItems(row: Row<User>) {
       label: 'Copy customer ID',
       icon: 'i-lucide-copy',
       onSelect() {
-        navigator.clipboard.writeText(row.original.id.toString())
+        navigator.clipboard.writeText(row.original.id.toString());
         toast.add({
           title: 'Copied to clipboard',
           description: 'Customer ID copied to clipboard'
-        })
+        });
       }
     },
     {
@@ -68,10 +70,10 @@ function getRowItems(row: Row<User>) {
         toast.add({
           title: 'Customer deleted',
           description: 'The customer has been deleted.'
-        })
+        });
       }
     }
-  ]
+  ];
 }
 
 const columns: TableColumn<User>[] = [
@@ -110,13 +112,13 @@ const columns: TableColumn<User>[] = [
           h('p', { class: 'font-medium text-highlighted' }, row.original.name),
           h('p', { class: '' }, `@${row.original.name}`)
         ])
-      ])
+      ]);
     }
   },
   {
     accessorKey: 'email',
     header: ({ column }) => {
-      const isSorted = column.getIsSorted()
+      const isSorted = column.getIsSorted();
 
       return h(UButton, {
         color: 'neutral',
@@ -129,7 +131,7 @@ const columns: TableColumn<User>[] = [
           : 'i-lucide-arrow-up-down',
         class: '-mx-2.5',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
-      })
+      });
     }
   },
   {
@@ -146,11 +148,9 @@ const columns: TableColumn<User>[] = [
         subscribed: 'success' as const,
         unsubscribed: 'error' as const,
         bounced: 'warning' as const
-      }[row.original.status]
+      }[row.original.status];
 
-      return h(UBadge, { class: 'capitalize', variant: 'subtle', color }, () =>
-        row.original.status
-      )
+      return h(UBadge, { class: 'capitalize', variant: 'subtle', color }, () => row.original.status);
     }
   },
   {
@@ -175,30 +175,37 @@ const columns: TableColumn<User>[] = [
               class: 'ml-auto'
             })
         )
-      )
+      );
     }
   }
-]
+];
 
-const statusFilter = ref('all')
+const statusFilter = ref('all');
 
-watch(() => statusFilter.value, (newVal) => {
-  if (!table?.value?.tableApi) return
+watch(
+  () => statusFilter.value,
+  (newVal) => {
+    if (!table?.value?.tableApi) {
+      return;
+    }
 
-  const statusColumn = table.value.tableApi.getColumn('status')
-  if (!statusColumn) return
+    const statusColumn = table.value.tableApi.getColumn('status');
+    if (!statusColumn) {
+      return;
+    }
 
-  if (newVal === 'all') {
-    statusColumn.setFilterValue(undefined)
-  } else {
-    statusColumn.setFilterValue(newVal)
+    if (newVal === 'all') {
+      statusColumn.setFilterValue(undefined);
+    } else {
+      statusColumn.setFilterValue(newVal);
+    }
   }
-})
+);
 
 const pagination = ref({
   pageIndex: 0,
   pageSize: 10
-})
+});
 </script>
 
 <template>

@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import * as z from 'zod'
-import type { FormError } from '@nuxt/ui'
+import * as z from 'zod';
+import type { FormError } from '@nuxt/ui';
 
 const passwordSchema = z.object({
   current: z.string().min(8, 'Must be at least 8 characters'),
   new: z.string().min(8, 'Must be at least 8 characters')
-})
+});
 
-type PasswordSchema = z.output<typeof passwordSchema>
+type PasswordSchema = z.output<typeof passwordSchema>;
 
 const password = reactive<Partial<PasswordSchema>>({
   current: undefined,
   new: undefined
-})
+});
 
 const validate = (state: Partial<PasswordSchema>): FormError[] => {
-  const errors: FormError[] = []
+  const errors: FormError[] = [];
   if (state.current && state.new && state.current === state.new) {
-    errors.push({ name: 'new', message: 'Passwords must be different' })
+    errors.push({ name: 'new', message: 'Passwords must be different' });
   }
-  return errors
-}
+  return errors;
+};
 </script>
 
 <template>
@@ -53,7 +53,11 @@ const validate = (state: Partial<PasswordSchema>): FormError[] => {
         />
       </UFormField>
 
-      <UButton label="Update" class="w-fit" type="submit" />
+      <UButton
+        label="Update"
+        class="w-fit"
+        type="submit"
+      />
     </UForm>
   </UPageCard>
 
@@ -63,7 +67,10 @@ const validate = (state: Partial<PasswordSchema>): FormError[] => {
     class="bg-gradient-to-tl from-error/10 from-5% to-default"
   >
     <template #footer>
-      <UButton label="Delete account" color="error" />
+      <UButton
+        label="Delete account"
+        color="error"
+      />
     </template>
   </UPageCard>
 </template>

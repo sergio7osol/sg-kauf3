@@ -5,7 +5,7 @@ const state = reactive<{ [key: string]: boolean }>({
   product_updates: true,
   weekly_digest: false,
   important_updates: true
-})
+});
 
 const sections = [{
   title: 'Notification channels',
@@ -35,16 +35,19 @@ const sections = [{
     label: 'Important updates',
     description: 'Receive emails about important updates like security fixes, maintenance, etc.'
   }]
-}]
+}];
 
 async function onChange() {
   // Do something with data
-  console.log(state)
+  console.log(state);
 }
 </script>
 
 <template>
-  <div v-for="(section, index) in sections" :key="index">
+  <div
+    v-for="(section, index) in sections"
+    :key="index"
+  >
     <UPageCard
       :title="section.title"
       :description="section.description"
@@ -52,7 +55,10 @@ async function onChange() {
       class="mb-4"
     />
 
-    <UPageCard variant="subtle" :ui="{ container: 'divide-y divide-default' }">
+    <UPageCard
+      variant="subtle"
+      :ui="{ container: 'divide-y divide-default' }"
+    >
       <UFormField
         v-for="field in section.fields"
         :key="field.name"
