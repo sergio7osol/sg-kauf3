@@ -1,6 +1,5 @@
 import axios from "axios";
-import type { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from "axios";
-import { toSnakeCase, toCamelCase } from "~/utils/caseTransform";
+import type { AxiosError, AxiosResponse } from "axios";
 
 export default defineNuxtPlugin(async (nuxtApp) => {
   if (import.meta.server) return;
@@ -17,31 +16,9 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   axios.defaults.withCredentials = true;
   axios.defaults.withXSRFToken = true;
 
-  // Request interceptor: transform camelCase → snake_case for outgoing requests
-  axios.interceptors.request.use(
-    (requestConfig: InternalAxiosRequestConfig) => {
-      // Transform query params (GET requests)
-      if (requestConfig.params && !(requestConfig.params instanceof FormData)) {
-        requestConfig.params = toSnakeCase(requestConfig.params);
-      }
-      // Transform request body (POST/PUT/PATCH requests)
-      if (requestConfig.data && !(requestConfig.data instanceof FormData)) {
-        requestConfig.data = toSnakeCase(requestConfig.data);
-      }
-      return requestConfig;
-    },
-    (error: AxiosError) => Promise.reject(error)
-  );
-
-  // Response interceptor: transform snake_case → camelCase for incoming responses
+  // Response interceptor: handle auth errors (no casing transformation - API uses camelCase)
   axios.interceptors.response.use(
-    (response: AxiosResponse) => {
-      // Transform response data
-      if (response.data) {
-        response.data = toCamelCase(response.data);
-      }
-      return response;
-    },
+    (response: AxiosResponse) => response,
     (error: AxiosError) => {
       const status = error.response?.status;
       const url = error.request?.responseURL;
