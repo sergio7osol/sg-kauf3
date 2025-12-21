@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { DropdownMenuItem } from '@nuxt/ui'
-import type { Member } from '~/types'
+import type { DropdownMenuItem } from '@nuxt/ui';
+import type { Member } from '~/types';
 
 defineProps<{
   members: Member[]
-}>()
+}>();
 
 const items = [{
   label: 'Edit member',
@@ -13,11 +13,14 @@ const items = [{
   label: 'Remove member',
   color: 'error' as const,
   onSelect: () => console.log('Remove member')
-}] satisfies DropdownMenuItem[]
+}] satisfies DropdownMenuItem[];
 </script>
 
 <template>
-  <ul role="list" class="divide-y divide-default">
+  <ul
+    role="list"
+    class="divide-y divide-default"
+  >
     <li
       v-for="(member, index) in members"
       :key="index"
@@ -47,7 +50,10 @@ const items = [{
           :ui="{ value: 'capitalize', item: 'capitalize' }"
         />
 
-        <UDropdownMenu :items="items" :content="{ align: 'end' }">
+        <UDropdownMenu
+          :items="items"
+          :content="{ align: 'end' }"
+        >
           <UButton
             icon="i-lucide-ellipsis-vertical"
             color="neutral"

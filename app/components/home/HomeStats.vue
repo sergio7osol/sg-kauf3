@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import type { Period, Range, Stat } from '~/types'
+import type { Period, Range, Stat } from '~/types';
 
 const props = defineProps<{
   period: Period
   range: Range
-}>()
+}>();
 
 function formatCurrency(value: number): string {
   return value.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0
-  })
+  });
 }
 
 const baseStats = [{
@@ -43,24 +43,24 @@ const baseStats = [{
   maxValue: 300,
   minVariation: -5,
   maxVariation: 15
-}]
+}];
 
 const { data: stats } = await useAsyncData<Stat[]>('stats', async () => {
   return baseStats.map((stat) => {
-    const value = randomInt(stat.minValue, stat.maxValue)
-    const variation = randomInt(stat.minVariation, stat.maxVariation)
+    const value = randomInt(stat.minValue, stat.maxValue);
+    const variation = randomInt(stat.minVariation, stat.maxVariation);
 
     return {
       title: stat.title,
       icon: stat.icon,
       value: stat.formatter ? stat.formatter(value) : value,
       variation
-    }
-  })
+    };
+  });
 }, {
   watch: [() => props.period, () => props.range],
   default: () => []
-})
+});
 </script>
 
 <template>
