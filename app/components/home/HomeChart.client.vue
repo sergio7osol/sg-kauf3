@@ -14,10 +14,10 @@ import {
   addYears,
   startOfDay
 } from 'date-fns';
-import { ComponentPublicInstance } from 'vue';
 import { VisXYContainer, VisLine, VisAxis, VisArea, VisCrosshair, VisTooltip } from '@unovis/vue';
-import type { Period, Range } from '~/types';
 import { usePurchaseChart, fetchPurchaseDateRange, type ChartDataPoint } from '~/composables/usePurchaseChart';
+import type { ComponentPublicInstance } from 'vue';
+import type { Period, Range } from '~/types';
 
 const cardRef = useTemplateRef<HTMLElement | null>('cardRef');
 
