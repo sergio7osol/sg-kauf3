@@ -19,6 +19,18 @@ const table = useTemplateRef('table');
 
 const selectedRow = ref<TableRow<Shop> | null>(null);
 
+const addressSlideoverOpen = ref(false);
+const selectedShopForAddresses = ref<Shop | null>(null);
+
+function openAddressManager(shop: Shop) {
+  selectedShopForAddresses.value = shop;
+  addressSlideoverOpen.value = true;
+}
+
+function handleAddressesUpdated() {
+  loadShops();
+}
+
 function onHover(_e: Event, row: TableRow<Shop> | null) {
   selectedRow.value = row;
 }
@@ -123,7 +135,18 @@ const columns: TableColumn<Shop>[] = [
     id: 'addressCount',
     header: 'Addresses',
     cell: ({ row }: { row: { original: Shop } }) => {
-      return h('div', { class: 'text-right text-gray-500' }, row.original.addresses?.length ?? 0);
+      const count = row.original.addresses?.length ?? 0;
+      return h(
+        'button',
+        {
+          class: 'text-right text-primary hover:underline cursor-pointer font-medium',
+          onClick: (e: Event) => {
+            e.stopPropagation();
+            openAddressManager(row.original);
+          }
+        },
+        count
+      );
     }
   },
   {
@@ -170,6 +193,11 @@ function handleShopCreated() {
 
         <template #right>
           <ShopsAddModal @created="handleShopCreated" />
+          <ShopsAddressesSlideover
+            v-model:open="addressSlideoverOpen"
+            :shop="selectedShopForAddresses"
+            @updated="handleAddressesUpdated"
+          />
         </template>
       </UDashboardNavbar>
     </template>
@@ -342,7 +370,7 @@ function handleShopCreated() {
                             <UBadge
                               :color="address.isActive ? 'success' : 'gray'"
                               variant="subtle"
-                              size="xs"
+                              size="md"
                             >
                               {{ address.isActive ? 'Active' : 'Inactive' }}
                             </UBadge>
