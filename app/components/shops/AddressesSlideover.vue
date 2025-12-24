@@ -360,7 +360,7 @@ const formTitle = computed(() => editingAddressId.value ? 'Edit address' : 'Add 
                 </UBadge>
                 <UBadge
                   v-else
-                  color="gray"
+                  color="neutral"
                   variant="soft"
                   size="xs"
                 >
