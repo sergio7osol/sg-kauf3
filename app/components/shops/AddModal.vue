@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import axios, { type AxiosError } from 'axios';
 import type { FormSubmitEvent } from '@nuxt/ui';
-import type { Shop } from '~/types';
+import type { Shop, ShopAddress } from '~/types';
 import {
   SHOP_COUNTRIES,
   SHOP_TYPES,
@@ -12,6 +12,12 @@ import {
   type ShopFormState,
   type ValidatedShopFormState
 } from '~/composables/useShopForm';
+import {
+  ADDRESS_COUNTRY_OPTIONS,
+  buildShopAddressPayload,
+  createShopAddressFormState,
+  type ShopAddressFormState
+} from '~/composables/useShopAddressForm';
 
 const emit = defineEmits<{ (e: 'created', shop: Shop): void }>();
 
@@ -32,11 +38,25 @@ const state = reactive<ShopFormState>(createShopFormState({
   country: 'Germany'
 }));
 
+const showAddressSection = ref(false);
+const addressState = reactive<ShopAddressFormState>(createShopAddressFormState());
+
+const addressCountries = [...ADDRESS_COUNTRY_OPTIONS];
+
+const hasAddressData = computed(() => {
+  return addressState.street.trim() !== ''
+    || addressState.houseNumber.trim() !== ''
+    || addressState.postalCode.trim() !== ''
+    || addressState.city.trim() !== '';
+});
+
 function resetForm() {
   Object.assign(state, createShopFormState({
     type: 'in_store',
     country: 'Germany'
   }));
+  Object.assign(addressState, createShopAddressFormState());
+  showAddressSection.value = false;
 }
 
 async function onSubmit(event: FormSubmitEvent<ValidatedShopFormState>) {
@@ -47,11 +67,34 @@ async function onSubmit(event: FormSubmitEvent<ValidatedShopFormState>) {
     const { data } = await axios.post<{ data?: Shop }>('/shops', payload);
     const createdShop = (data?.data ?? data) as Shop;
 
-    toast.add({
-      title: 'Shop created',
-      description: `${createdShop.name} was created successfully`,
-      color: 'success'
-    });
+    // If address section is filled, create the address
+    if (showAddressSection.value && hasAddressData.value) {
+      try {
+        const addressPayload = buildShopAddressPayload({
+          ...addressState,
+          isPrimary: true // First address is always primary
+        });
+        await axios.post<{ data: ShopAddress }>(`/shops/${createdShop.id}/addresses`, addressPayload);
+        toast.add({
+          title: 'Shop created with address',
+          description: `${createdShop.name} and its address were created successfully`,
+          color: 'success'
+        });
+      } catch {
+        // Shop was created but address failed
+        toast.add({
+          title: 'Shop created',
+          description: `${createdShop.name} was created, but address creation failed. You can add it later.`,
+          color: 'warning'
+        });
+      }
+    } else {
+      toast.add({
+        title: 'Shop created',
+        description: `${createdShop.name} was created successfully`,
+        color: 'success'
+      });
+    }
 
     emit('created', createdShop);
     open.value = false;
@@ -149,6 +192,92 @@ watch(open, (value: boolean) => {
             <span class="text-sm text-gray-500">{{ state.isActive ? 'Visible in listings' : 'Created as draft' }}</span>
           </div>
         </UFormField>
+
+        <div class="border-t border-gray-200 pt-4">
+          <button
+            type="button"
+            class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 w-full"
+            @click="showAddressSection = !showAddressSection"
+          >
+            <UIcon
+              :name="showAddressSection ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+              class="w-4 h-4"
+            />
+            <UIcon
+              name="i-lucide-map-pin"
+              class="w-4 h-4"
+            />
+            <span>Add initial address (optional)</span>
+          </button>
+
+          <div
+            v-if="showAddressSection"
+            class="mt-4 p-4 bg-gray-50 rounded-lg space-y-3"
+          >
+            <div class="grid grid-cols-2 gap-3">
+              <UFormField
+                label="Street"
+                name="addressStreet"
+              >
+                <UInput
+                  v-model="addressState.street"
+                  placeholder="Hauptstraße"
+                  size="sm"
+                />
+              </UFormField>
+
+              <UFormField
+                label="House #"
+                name="addressHouseNumber"
+              >
+                <UInput
+                  v-model="addressState.houseNumber"
+                  placeholder="12a"
+                  size="sm"
+                />
+              </UFormField>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <UFormField
+                label="Postal code"
+                name="addressPostalCode"
+              >
+                <UInput
+                  v-model="addressState.postalCode"
+                  placeholder="86150"
+                  size="sm"
+                />
+              </UFormField>
+
+              <UFormField
+                label="City"
+                name="addressCity"
+              >
+                <UInput
+                  v-model="addressState.city"
+                  placeholder="Augsburg"
+                  size="sm"
+                />
+              </UFormField>
+            </div>
+
+            <UFormField
+              label="Country"
+              name="addressCountry"
+            >
+              <USelect
+                v-model="addressState.country"
+                :items="addressCountries"
+                size="sm"
+              />
+            </UFormField>
+
+            <p class="text-xs text-gray-500">
+              This address will be set as the primary address for the shop.
+            </p>
+          </div>
+        </div>
 
         <div class="flex justify-end gap-2">
           <UButton

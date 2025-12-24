@@ -2,8 +2,10 @@ import type { AxiosError } from 'axios';
 import { z } from 'zod';
 import type { ShopType, CountryCode } from '~/types';
 
+export type ShopCountry = Extract<CountryCode, 'Germany' | 'Russia'>;
+
 export const SHOP_TYPES: ShopType[] = ['in_store', 'online', 'hybrid'];
-export const SHOP_COUNTRIES: CountryCode[] = ['Germany', 'Russia'];
+export const SHOP_COUNTRIES: ShopCountry[] = ['Germany', 'Russia'];
 
 export const shopFormSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255, 'Name must be 255 characters or less'),
@@ -16,25 +18,18 @@ export const shopFormSchema = z.object({
 export interface ShopFormState {
   name: string
   slug: string
-  type: ShopType | ''
-  country: CountryCode | ''
+  type: ShopType
+  country: ShopCountry
   isActive: boolean
 }
 
-// Validated form state type (after zod validation)
-export type ValidatedShopFormState = {
-  name: string
-  type: ShopType
-  country: CountryCode
-  isActive: boolean
-  slug?: string
-};
+export type ValidatedShopFormState = z.output<typeof shopFormSchema>;
 
 export const createShopFormState = (overrides: Partial<ShopFormState> = {}): ShopFormState => ({
   name: '',
   slug: '',
-  type: '' as ShopType | '',
-  country: '' as CountryCode | '',
+  type: 'in_store',
+  country: 'Germany',
   isActive: true,
   ...overrides
 });

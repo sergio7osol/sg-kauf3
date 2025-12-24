@@ -7,6 +7,7 @@
   "editor.quickSuggestions": {
     "strings": "on"
   },
+  "editor.wordWrap": "on",
   "eslint.validate": [
     "javascript",
     "javascriptreact",
