@@ -124,6 +124,16 @@ export interface PurchaseLine {
   notes?: string | null
 }
 
+export interface PurchaseAttachment {
+  id: number
+  purchaseId: number
+  originalFilename: string
+  mimeType: string
+  size: number
+  uploadedAt: string
+  downloadUrl: string
+}
+
 export interface Purchase {
   id: number
   userId: number
@@ -145,6 +155,7 @@ export interface Purchase {
   shopAddress?: ShopAddress
   userPaymentMethod?: UserPaymentMethod
   lines?: PurchaseLine[]
+  attachments?: PurchaseAttachment[]
 }
 
 export interface CreatePurchasePayload {
