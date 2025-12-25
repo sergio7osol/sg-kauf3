@@ -84,9 +84,13 @@ export const usePurchases = () => {
     }
   }
 
-  async function createPurchase(payload: CreatePurchasePayload) {
+  async function createPurchase(payload: CreatePurchasePayload | FormData) {
+    const config = payload instanceof FormData
+      ? { headers: { 'Content-Type': 'multipart/form-data' } }
+      : undefined;
+
     try {
-      const { data } = await axios.post<{ data: Purchase }>('/purchases', payload);
+      const { data } = await axios.post<{ data: Purchase }>('/purchases', payload, config);
       return data;
     } catch (err: unknown) {
       console.error('Failed to create purchase:', err);
@@ -94,9 +98,13 @@ export const usePurchases = () => {
     }
   }
 
-  async function updatePurchase(id: number, payload: Partial<CreatePurchasePayload>) {
+  async function updatePurchase(id: number, payload: Partial<CreatePurchasePayload> | FormData) {
+    const config = payload instanceof FormData
+      ? { headers: { 'Content-Type': 'multipart/form-data' } }
+      : undefined;
+
     try {
-      const { data } = await axios.patch<{ data: Purchase }>(`/purchases/${id}`, payload);
+      const { data } = await axios.put<{ data: Purchase }>(`/purchases/${id}`, payload, config);
       // Update single purchase state if it matches
       if (purchase.value?.id === id) {
         purchase.value = data.data;
@@ -122,6 +130,20 @@ export const usePurchases = () => {
     }
   }
 
+  async function deleteAttachment(purchaseId: number, attachmentId: number) {
+    try {
+      const { data } = await axios.delete<{ message: string }>(`/purchases/${purchaseId}/attachments/${attachmentId}`);
+      // Refresh purchase data if currently viewing this purchase
+      if (purchase.value?.id === purchaseId) {
+        await fetchPurchase(purchaseId);
+      }
+      return data;
+    } catch (err: unknown) {
+      console.error('Failed to delete attachment:', err);
+      throw err;
+    }
+  }
+
   return {
     purchases,
     meta,
@@ -134,6 +156,7 @@ export const usePurchases = () => {
     fetchPurchase,
     createPurchase,
     updatePurchase,
-    deletePurchase
+    deletePurchase,
+    deleteAttachment
   };
 };
