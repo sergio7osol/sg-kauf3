@@ -11,11 +11,26 @@ definePageMeta({
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
-const { purchase, purchaseLoading, purchaseError, fetchPurchase, deletePurchase } = usePurchases();
+const config = useRuntimeConfig();
+const { purchase, purchaseLoading, purchaseError, fetchPurchase, deletePurchase, deleteAttachment } = usePurchases();
 
 // Delete modal state
 const isDeleteModalOpen = ref(false);
 const isDeleting = ref(false);
+
+// Attachment delete modal state
+const isDeleteAttachmentModalOpen = ref(false);
+const attachmentToDelete = ref<{ purchaseId: number, attachmentId: number, filename: string } | null>(null);
+const isDeletingAttachment = ref(false);
+
+// Attachment download state
+const downloadingAttachmentId = ref<number | null>(null);
+
+// Attachment preview modal state
+const isPreviewModalOpen = ref(false);
+const previewAttachment = ref<{ id: number, filename: string, mimeType: string } | null>(null);
+const previewBlobUrl = ref<string | null>(null);
+const previewingAttachmentId = ref<number | null>(null);
 
 const purchaseId = computed(() => route.params.id as string);
 
@@ -81,6 +96,149 @@ function formatLineDiscount(line: PurchaseLine): string {
     return `${line.discountPercent}%`;
   }
   return '—';
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function getFileIcon(mimeType: string): string {
+  if (mimeType === 'application/pdf') return 'i-lucide-file-text';
+  if (mimeType.startsWith('image/')) return 'i-lucide-image';
+  return 'i-lucide-file';
+}
+
+function getAttachmentDownloadUrl(path: string): string {
+  try {
+    return new URL(path, config.public.apiBase).toString();
+  } catch (err) {
+    console.error('Failed to build attachment download URL:', err, path);
+    return path;
+  }
+}
+
+async function handleDownloadAttachment(attachmentId: number, downloadUrl: string, filename: string) {
+  if (downloadingAttachmentId.value !== null) return;
+
+  downloadingAttachmentId.value = attachmentId;
+
+  try {
+    const url = getAttachmentDownloadUrl(downloadUrl);
+    const response = await axios.get(url, {
+      responseType: 'blob',
+      withCredentials: true
+    });
+
+    const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(blobUrl);
+  } catch (err: unknown) {
+    const errorMessage = axios.isAxiosError(err)
+      ? err.response?.data?.message ?? 'Failed to download attachment. Please try again.'
+      : 'Failed to download attachment. Please try again.';
+
+    toast.add({
+      title: 'Download Error',
+      description: errorMessage,
+      icon: 'i-lucide-alert-circle',
+      color: 'error'
+    });
+    console.error('Download error:', err);
+  } finally {
+    downloadingAttachmentId.value = null;
+  }
+}
+
+async function handlePreviewAttachment(attachmentId: number, downloadUrl: string, filename: string, mimeType: string) {
+  if (previewingAttachmentId.value !== null) return;
+
+  previewingAttachmentId.value = attachmentId;
+
+  try {
+    const url = getAttachmentDownloadUrl(downloadUrl);
+    const response = await axios.get(url, {
+      responseType: 'blob',
+      withCredentials: true
+    });
+
+    const blob = new Blob([response.data], { type: response.headers['content-type'] || mimeType });
+    const blobUrl = URL.createObjectURL(blob);
+
+    previewAttachment.value = { id: attachmentId, filename, mimeType };
+    previewBlobUrl.value = blobUrl;
+    isPreviewModalOpen.value = true;
+  } catch (err: unknown) {
+    const errorMessage = axios.isAxiosError(err)
+      ? err.response?.data?.message ?? 'Failed to load preview. Please try again.'
+      : 'Failed to load preview. Please try again.';
+
+    toast.add({
+      title: 'Preview Error',
+      description: errorMessage,
+      icon: 'i-lucide-alert-circle',
+      color: 'error'
+    });
+    console.error('Preview error:', err);
+  } finally {
+    previewingAttachmentId.value = null;
+  }
+}
+
+function closePreviewModal() {
+  isPreviewModalOpen.value = false;
+  if (previewBlobUrl.value) {
+    URL.revokeObjectURL(previewBlobUrl.value);
+    previewBlobUrl.value = null;
+  }
+  previewAttachment.value = null;
+}
+
+function openDeleteAttachmentModal(purchaseId: number, attachmentId: number, filename: string) {
+  attachmentToDelete.value = { purchaseId, attachmentId, filename };
+  isDeleteAttachmentModalOpen.value = true;
+}
+
+async function handleDeleteAttachment() {
+  if (!attachmentToDelete.value) return;
+
+  isDeletingAttachment.value = true;
+
+  try {
+    await deleteAttachment(attachmentToDelete.value.purchaseId, attachmentToDelete.value.attachmentId);
+
+    toast.add({
+      title: 'Attachment Deleted',
+      description: `"${attachmentToDelete.value.filename}" has been deleted.`,
+      icon: 'i-lucide-check',
+      color: 'success'
+    });
+
+    isDeleteAttachmentModalOpen.value = false;
+    attachmentToDelete.value = null;
+  } catch (err: unknown) {
+    const errorMessage = axios.isAxiosError(err)
+      ? err.response?.data?.message ?? 'Failed to delete attachment. Please try again.'
+      : 'Failed to delete attachment. Please try again.';
+
+    toast.add({
+      title: 'Error',
+      description: errorMessage,
+      icon: 'i-lucide-alert-circle',
+      color: 'error'
+    });
+  } finally {
+    isDeletingAttachment.value = false;
+  }
 }
 
 // Delete handler
@@ -346,6 +504,78 @@ async function handleDelete() {
             </dl>
           </UCard>
 
+          <!-- Attachments -->
+          <UCard v-if="purchase.attachments && purchase.attachments.length > 0">
+            <template #header>
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold">
+                    Receipt Attachments
+                  </h3>
+                  <p class="text-sm text-muted">
+                    {{ purchase.attachments.length }} file(s)
+                  </p>
+                </div>
+              </div>
+            </template>
+
+            <div class="space-y-2">
+              <div
+                v-for="attachment in purchase.attachments"
+                :key="attachment.id"
+                class="flex items-center justify-between p-3 border border-default rounded-lg bg-elevated/30 hover:bg-elevated/50 transition-colors"
+              >
+                <div class="flex items-center gap-3 min-w-0 flex-1">
+                  <UIcon
+                    :name="getFileIcon(attachment.mimeType)"
+                    class="w-5 h-5 text-muted flex-shrink-0"
+                  />
+                  <div class="min-w-0 flex-1">
+                    <div class="text-sm font-medium truncate">
+                      {{ attachment.originalFilename }}
+                    </div>
+                    <div class="text-xs text-muted">
+                      {{ formatFileSize(attachment.size) }} • Uploaded {{ new Date(attachment.uploadedAt).toLocaleDateString() }}
+                    </div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <UButton
+                    icon="i-lucide-eye"
+                    color="neutral"
+                    variant="ghost"
+                    size="md"
+                    title="Preview"
+                    :loading="previewingAttachmentId === attachment.id"
+                    :disabled="previewingAttachmentId !== null || downloadingAttachmentId !== null"
+                    class="btn-standard"
+                    @click="handlePreviewAttachment(attachment.id, attachment.downloadUrl, attachment.originalFilename, attachment.mimeType)"
+                  />
+                  <UButton
+                    icon="i-lucide-download"
+                    color="primary"
+                    variant="ghost"
+                    size="md"
+                    title="Download"
+                    :loading="downloadingAttachmentId === attachment.id"
+                    :disabled="downloadingAttachmentId !== null || previewingAttachmentId !== null"
+                    class="btn-standard"
+                    @click="handleDownloadAttachment(attachment.id, attachment.downloadUrl, attachment.originalFilename)"
+                  />
+                  <UButton
+                    icon="i-lucide-trash-2"
+                    color="error"
+                    variant="ghost"
+                    size="md"
+                    title="Delete"
+                    class="btn-standard"
+                    @click="openDeleteAttachmentModal(purchase.id, attachment.id, attachment.originalFilename)"
+                  />
+                </div>
+              </div>
+            </div>
+          </UCard>
+
           <!-- Line Items -->
           <UCard>
             <template #header>
@@ -535,6 +765,128 @@ async function handleDelete() {
             />
           </div>
         </template>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Delete Attachment Confirmation Modal -->
+  <UModal v-model:open="isDeleteAttachmentModalOpen">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-error/10 flex-shrink-0">
+              <UIcon
+                name="i-lucide-alert-triangle"
+                class="h-5 w-5 text-error"
+              />
+            </div>
+            <h3 class="text-lg font-semibold">
+              Delete Attachment
+            </h3>
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <p class="text-sm text-muted">
+            This action cannot be undone
+          </p>
+
+          <p class="text-sm text-default">
+            Are you sure you want to delete <strong>{{ attachmentToDelete?.filename }}</strong>?
+          </p>
+
+          <UAlert
+            color="warning"
+            variant="soft"
+            icon="i-lucide-info"
+            title="Note"
+            description="The file will be permanently removed from storage."
+          />
+        </div>
+
+        <template #footer>
+          <div class="flex gap-3 justify-end">
+            <UButton
+              color="neutral"
+              variant="outline"
+              label="Cancel"
+              :disabled="isDeletingAttachment"
+              @click="isDeleteAttachmentModalOpen = false"
+            />
+            <UButton
+              color="error"
+              icon="i-lucide-trash-2"
+              label="Delete Attachment"
+              :loading="isDeletingAttachment"
+              @click="handleDeleteAttachment"
+            />
+          </div>
+        </template>
+      </UCard>
+    </template>
+  </UModal>
+
+  <!-- Attachment Preview Modal -->
+  <UModal
+    v-model:open="isPreviewModalOpen"
+    fullscreen
+    @close="closePreviewModal"
+  >
+    <template #content>
+      <UCard :ui="{ body: 'p-0' }">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <UIcon
+                :name="previewAttachment?.mimeType === 'application/pdf' ? 'i-lucide-file-text' : 'i-lucide-image'"
+                class="h-5 w-5 text-muted"
+              />
+              <h3 class="text-lg font-semibold truncate max-w-md">
+                {{ previewAttachment?.filename }}
+              </h3>
+            </div>
+            <UButton
+              icon="i-lucide-x"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              @click="closePreviewModal"
+            />
+          </div>
+        </template>
+
+        <div
+          class="bg-muted/20"
+          style="height: calc(100vh - 5rem);"
+        >
+          <iframe
+            v-if="previewBlobUrl && previewAttachment?.mimeType === 'application/pdf'"
+            :src="previewBlobUrl"
+            class="w-full h-full border-0"
+            title="PDF Preview"
+          />
+          <div
+            v-else-if="previewBlobUrl && previewAttachment?.mimeType.startsWith('image/')"
+            class="w-full h-full flex items-center justify-center"
+          >
+            <img
+              :src="previewBlobUrl"
+              :alt="previewAttachment?.filename"
+              class="max-w-full max-h-full object-contain"
+            >
+          </div>
+          <div
+            v-else
+            class="text-muted text-center p-8"
+          >
+            <UIcon
+              name="i-lucide-file-question"
+              class="h-12 w-12 mb-4 mx-auto"
+            />
+            <p>Unable to preview this file type</p>
+          </div>
+        </div>
       </UCard>
     </template>
   </UModal>

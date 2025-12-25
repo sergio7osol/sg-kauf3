@@ -38,6 +38,9 @@ const wasImportedFromReceipt = ref(false);
 const importWarnings = ref<string[]>([]);
 const importedAddressLabel = ref<string | null>(null);
 
+// Receipt attachment files state
+const attachmentFiles = ref<File[]>([]);
+
 // Purchase header state
 const selectedShopId = ref<number | undefined>(undefined);
 const selectedAddressId = ref<number | undefined>(undefined);
@@ -248,7 +251,17 @@ async function handleSubmit() {
       }))
     };
 
-    await createPurchase(payload);
+    // Build FormData if attachments exist, otherwise send JSON
+    if (attachmentFiles.value.length > 0) {
+      const formData = new FormData();
+      formData.append('data', JSON.stringify(payload));
+      attachmentFiles.value.forEach((file) => {
+        formData.append('attachments[]', file);
+      });
+      await createPurchase(formData);
+    } else {
+      await createPurchase(payload);
+    }
 
     toast.add({
       title: 'Purchase Created',
@@ -534,6 +547,28 @@ function applyParsedReceipt(data: ParsedReceiptData) {
               </UFormField>
             </div>
           </div>
+        </UCard>
+
+        <!-- Receipt Attachments Card -->
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-semibold">
+                  Receipt Attachments
+                </h3>
+                <p class="text-sm text-muted">
+                  Optional: Upload receipt files for archival purposes
+                </p>
+              </div>
+            </div>
+          </template>
+
+          <PurchasesReceiptAttachmentUpload
+            v-model="attachmentFiles"
+            :max-files="10"
+            :max-file-size-m-b="3"
+          />
         </UCard>
 
         <!-- Line Items Card -->
