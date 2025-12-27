@@ -11,8 +11,8 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
     public: {
-      apiBase: 'http://localhost',
-      appURL: 'http://localhost:3000'
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost',
+      appURL: process.env.NUXT_PUBLIC_APP_URL || 'http://localhost:3000'
     }
   },
   routeRules: {
