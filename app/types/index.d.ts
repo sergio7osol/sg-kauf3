@@ -155,7 +155,7 @@ export interface Purchase {
   shopAddress?: ShopAddress
   userPaymentMethod?: UserPaymentMethod
   lines?: PurchaseLine[]
-  attachments?: PurchaseAttachment[]
+  attachments: PurchaseAttachment[]
 }
 
 export interface CreatePurchasePayload {
