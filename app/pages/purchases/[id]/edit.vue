@@ -24,7 +24,7 @@ const toast = useToast();
 const purchaseId = computed(() => Number(route.params.id));
 
 // Composables
-const { purchase, purchaseLoading, fetchPurchase, updatePurchase } = usePurchases();
+const { purchase, purchaseLoading, fetchPurchase, updatePurchase, deleteAttachment } = usePurchases();
 const { shops, fetchShops, isLoading: shopsLoading } = useShops();
 const {
   activePaymentMethods,
@@ -287,7 +287,6 @@ async function handleDeleteAttachment() {
   isDeletingAttachment.value = true;
 
   try {
-    const { deleteAttachment } = usePurchases();
     await deleteAttachment(purchase.value.id, attachmentToDelete.value.id);
 
     toast.add({
