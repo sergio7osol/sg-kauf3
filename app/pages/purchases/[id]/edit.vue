@@ -619,7 +619,7 @@ function handleCancel() {
             />
 
             <!-- Existing Attachments -->
-            <div v-if="purchase?.attachments && purchase.attachments.length > 0">
+            <div v-if="purchase?.attachments?.length > 0">
               <h4 class="text-sm font-medium mb-3">
                 Existing Attachments
               </h4>
