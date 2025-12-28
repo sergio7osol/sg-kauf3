@@ -44,6 +44,12 @@ const breadcrumbs = computed(() => [
 const isSubmitting = ref(false);
 const updateMode = ref<'header' | 'full'>('header');
 
+// Attachment upload state
+const attachmentFiles = ref<File[]>([]);
+const isDeletingAttachment = ref(false);
+const attachmentToDelete = ref<{ id: number, filename: string } | null>(null);
+const isDeleteAttachmentModalOpen = ref(false);
+
 // Purchase header state
 const selectedShopId = ref<number | undefined>(undefined);
 const selectedAddressId = ref<number | undefined>(undefined);
@@ -274,6 +280,48 @@ onMounted(async () => {
   }
 });
 
+// Delete attachment handler
+async function handleDeleteAttachment() {
+  if (!attachmentToDelete.value || !purchase.value) return;
+
+  isDeletingAttachment.value = true;
+
+  try {
+    const { deleteAttachment } = usePurchases();
+    await deleteAttachment(purchase.value.id, attachmentToDelete.value.id);
+
+    toast.add({
+      title: 'Attachment Deleted',
+      description: `"${attachmentToDelete.value.filename}" has been deleted.`,
+      icon: 'i-lucide-check',
+      color: 'success'
+    });
+
+    isDeleteAttachmentModalOpen.value = false;
+    attachmentToDelete.value = null;
+  } catch {
+    toast.add({
+      title: 'Delete Error',
+      description: 'Failed to delete attachment. Please try again.',
+      icon: 'i-lucide-alert-circle',
+      color: 'error'
+    });
+  } finally {
+    isDeletingAttachment.value = false;
+  }
+}
+
+function openDeleteAttachmentModal(id: number, filename: string) {
+  attachmentToDelete.value = { id, filename };
+  isDeleteAttachmentModalOpen.value = true;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
 // Submit handler
 async function handleSubmit() {
   if (!isFormValid.value) {
@@ -315,7 +363,24 @@ async function handleSubmit() {
       }));
     }
 
-    await updatePurchase(purchaseId.value, payload);
+    // Handle file uploads with FormData if new files exist
+    if (attachmentFiles.value.length > 0) {
+      const formData = new FormData();
+
+      // Append JSON data as 'data' field
+      formData.append('data', JSON.stringify(payload));
+
+      // Append new attachments
+      attachmentFiles.value.forEach((file) => {
+        formData.append('attachments[]', file);
+      });
+
+      // Use the FormData-aware updatePurchase
+      await updatePurchase(purchaseId.value, formData);
+    } else {
+      // Standard JSON update
+      await updatePurchase(purchaseId.value, payload);
+    }
 
     toast.add({
       title: 'Purchase Updated',
@@ -529,6 +594,69 @@ function handleCancel() {
           </div>
         </UCard>
 
+        <!-- Receipt Attachments Card -->
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-semibold">
+                  Receipt Attachments
+                </h3>
+                <p class="text-sm text-muted">
+                  Upload new receipts or manage existing ones
+                </p>
+              </div>
+            </div>
+          </template>
+
+          <div class="space-y-6">
+            <!-- New Uploads -->
+            <PurchasesReceiptAttachmentUpload
+              v-model="attachmentFiles"
+              :max-files="10 - (purchase?.attachments?.length || 0)"
+              :max-file-size-m-b="3"
+            />
+
+            <!-- Existing Attachments -->
+            <div v-if="purchase?.attachments && purchase.attachments.length > 0">
+              <h4 class="text-sm font-medium mb-3">
+                Existing Attachments
+              </h4>
+              <div class="space-y-2">
+                <div
+                  v-for="attachment in purchase.attachments"
+                  :key="attachment.id"
+                  class="flex items-center justify-between p-3 border border-default rounded-lg bg-elevated/30"
+                >
+                  <div class="flex items-center gap-3 min-w-0">
+                    <UIcon
+                      :name="attachment.mimeType === 'application/pdf' ? 'i-lucide-file-text' : 'i-lucide-image'"
+                      class="h-5 w-5 text-muted flex-shrink-0"
+                    />
+                    <div>
+                      <div class="text-sm font-medium truncate">
+                        {{ attachment.originalFilename }}
+                      </div>
+                      <div class="text-xs text-muted">
+                        {{ formatFileSize(attachment.size) }} • Uploaded {{ new Date(attachment.uploadedAt).toLocaleDateString() }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <UButton
+                    icon="i-lucide-trash-2"
+                    color="error"
+                    variant="ghost"
+                    size="sm"
+                    title="Delete"
+                    @click="openDeleteAttachmentModal(attachment.id, attachment.originalFilename)"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </UCard>
+
         <!-- Line Items Card -->
         <UCard>
           <template #header>
@@ -710,4 +838,62 @@ function handleCancel() {
       </div>
     </template>
   </UDashboardPanel>
+
+  <!-- Delete Attachment Confirmation Modal -->
+  <UModal v-model:open="isDeleteAttachmentModalOpen">
+    <template #content>
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-error/10 flex-shrink-0">
+              <UIcon
+                name="i-lucide-alert-triangle"
+                class="h-5 w-5 text-error"
+              />
+            </div>
+            <h3 class="text-lg font-semibold">
+              Delete Attachment
+            </h3>
+          </div>
+        </template>
+
+        <div class="space-y-4">
+          <p class="text-sm text-muted">
+            This action cannot be undone
+          </p>
+
+          <p class="text-sm text-default">
+            Are you sure you want to delete <strong>{{ attachmentToDelete?.filename }}</strong>?
+          </p>
+
+          <UAlert
+            color="warning"
+            variant="soft"
+            icon="i-lucide-info"
+            title="Note"
+            description="The file will be permanently removed from storage immediately."
+          />
+        </div>
+
+        <template #footer>
+          <div class="flex gap-3 justify-end">
+            <UButton
+              color="neutral"
+              variant="outline"
+              label="Cancel"
+              :disabled="isDeletingAttachment"
+              @click="isDeleteAttachmentModalOpen = false"
+            />
+            <UButton
+              color="error"
+              icon="i-lucide-trash-2"
+              label="Delete Attachment"
+              :loading="isDeletingAttachment"
+              @click="handleDeleteAttachment"
+            />
+          </div>
+        </template>
+      </UCard>
+    </template>
+  </UModal>
 </template>

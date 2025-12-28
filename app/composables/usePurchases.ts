@@ -99,12 +99,22 @@ export const usePurchases = () => {
   }
 
   async function updatePurchase(id: number, payload: Partial<CreatePurchasePayload> | FormData) {
-    const config = payload instanceof FormData
-      ? { headers: { 'Content-Type': 'multipart/form-data' } }
-      : undefined;
-
     try {
-      const { data } = await axios.put<{ data: Purchase }>(`/purchases/${id}`, payload, config);
+      let response;
+
+      if (payload instanceof FormData) {
+        // Method spoofing for file uploads (PHP limitation with PUT/multipart)
+        payload.append('_method', 'PUT');
+        response = await axios.post<{ data: Purchase }>(`/purchases/${id}`, payload, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      } else {
+        // Standard JSON update
+        response = await axios.put<{ data: Purchase }>(`/purchases/${id}`, payload);
+      }
+
+      const { data } = response;
+
       // Update single purchase state if it matches
       if (purchase.value?.id === id) {
         purchase.value = data.data;
