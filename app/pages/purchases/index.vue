@@ -56,6 +56,7 @@ async function handleConfirmDelete() {
 const UBadge = resolveComponent('UBadge');
 const UButton = resolveComponent('UButton');
 const UChip = resolveComponent('UChip');
+const UIcon = resolveComponent('UIcon');
 
 const toast = useToast();
 const { purchases, meta, isLoading, error: _fetchError, fetchPurchases, deletePurchase } = usePurchases();
@@ -300,6 +301,7 @@ interface PurchaseTableRow {
   totalAmountValue: number
   totalAmountDisplay: string
   status: Purchase['status']
+  attachmentCount: number
   _original: Purchase // Keep reference for expansion
 }
 
@@ -396,11 +398,14 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
   {
     id: 'actions',
     header: '',
-    cell: ({ row }: { row: { original: { _original: Purchase }, getIsExpanded: () => boolean, toggleExpanded: () => void } }) => {
+    cell: ({ row }: { row: { original: { _original: Purchase, attachmentCount: number }, getIsExpanded: () => boolean, toggleExpanded: () => void } }) => {
       const purchase = row.original._original;
       const hasLines = purchase.lines && purchase.lines.length > 0;
+      const attachmentCount = row.original.attachmentCount;
 
-      return h('div', { class: 'flex items-center gap-1' }, [
+      const elements = [];
+
+      elements.push(
         h(UButton, {
           icon: 'i-lucide-eye',
           color: 'neutral',
@@ -428,7 +433,26 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
           title: 'Delete purchase',
           onClick: () => openDeleteModal(purchase)
         })
-      ]);
+      );
+
+      if (attachmentCount > 0) {
+        elements.push(
+          h(UBadge, {
+            'color': 'neutral',
+            'variant': 'soft',
+            'class': 'ml-2 rounded-full px-2 py-1 flex items-center gap-1 text-[11px] font-medium leading-none',
+            'aria-label': `${attachmentCount} attachment${attachmentCount === 1 ? '' : 's'}`
+          }, () => [
+            h(UIcon, {
+              name: 'i-lucide-paperclip',
+              class: 'w-4 h-4 text-highlighted'
+            }),
+            h('span', {}, attachmentCount)
+          ])
+        );
+      }
+
+      return h('div', { class: 'flex items-center gap-1' }, elements);
     },
     enableSorting: false,
     enableHiding: false
@@ -458,6 +482,7 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
       totalAmountValue: purchase.totalAmount ?? 0,
       totalAmountDisplay: `€${(purchase.totalAmount / 100).toFixed(2)}`,
       status: purchase.status,
+      attachmentCount: purchase.attachments?.length ?? 0,
       _original: purchase
     };
   });
