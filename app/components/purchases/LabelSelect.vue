@@ -9,9 +9,14 @@ interface LabelOption {
   description?: string | null
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: number[]
-}>();
+  hideCreateButton?: boolean
+  placeholder?: string
+}>(), {
+  hideCreateButton: false,
+  placeholder: 'Select labels...'
+});
 
 const emit = defineEmits<{
   'update:modelValue': [value: number[]]
@@ -123,7 +128,7 @@ async function handleCreateLabel() {
             v-if="selectedLabelObjects.length === 0"
             class="text-muted"
           >
-            Select labels...
+            {{ placeholder }}
           </span>
           <template v-else>
             <UBadge
@@ -146,6 +151,7 @@ async function handleCreateLabel() {
     </USelectMenu>
 
     <UButton
+      v-if="!hideCreateButton"
       color="neutral"
       variant="ghost"
       icon="i-lucide-plus"
