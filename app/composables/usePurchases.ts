@@ -6,6 +6,7 @@ export interface FetchPurchasesParams {
   dateFrom?: string | null
   dateTo?: string | null
   status?: PurchaseStatus | null
+  labelIds?: number[]
   includeLines?: boolean
   perPage?: number
   page?: number
@@ -20,7 +21,14 @@ function buildQueryParams(params: FetchPurchasesParams): Record<string, unknown>
 
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== '') {
-      result[key] = typeof value === 'boolean' ? Number(value) : value;
+      // Handle arrays (e.g., labelIds) - only include if non-empty
+      if (Array.isArray(value)) {
+        if (value.length > 0) {
+          result[key] = value;
+        }
+      } else {
+        result[key] = typeof value === 'boolean' ? Number(value) : value;
+      }
     }
   }
 

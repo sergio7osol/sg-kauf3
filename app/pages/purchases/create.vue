@@ -49,6 +49,7 @@ const purchaseDate = ref(new Date().toISOString().split('T')[0]); // Today
 const purchaseTime = ref<string | null>(null);
 const currency = ref('EUR');
 const status = ref<PurchaseStatus>('confirmed');
+const selectedLabelIds = ref<number[]>([]);
 const notes = ref('');
 const receiptNumber = ref('');
 
@@ -239,6 +240,7 @@ async function handleSubmit() {
       status: status.value,
       notes: notes.value || null,
       receiptNumber: receiptNumber.value || null,
+      labelIds: selectedLabelIds.value.length > 0 ? selectedLabelIds.value : undefined,
       lines: lines.value.map((line, index) => ({
         lineNumber: index + 1,
         description: line.description.trim(),
@@ -524,6 +526,11 @@ function applyParsedReceipt(data: ParsedReceiptData) {
                 value-key="value"
                 class="w-full"
               />
+            </UFormField>
+
+            <!-- Labels -->
+            <UFormField label="Labels">
+              <PurchasesLabelSelect v-model="selectedLabelIds" />
             </UFormField>
 
             <!-- Receipt Number -->

@@ -4,7 +4,7 @@ import axios from 'axios';
 import type { TableColumn } from '@nuxt/ui';
 import { usePurchases, type FetchPurchasesParams } from '~/composables/usePurchases';
 import { useShops } from '~/composables/useShops';
-import type { Purchase, PurchaseStatus, Shop, PurchaseLine } from '~/types';
+import type { Purchase, PurchaseStatus, Shop, PurchaseLine, Label } from '~/types';
 
 definePageMeta({
   middleware: ['auth']
@@ -100,6 +100,7 @@ const filters = reactive({
   dateFrom: null as string | null,
   dateTo: null as string | null,
   status: 'all' as PurchaseStatus | 'all',
+  labelIds: [] as number[],
   includeLines: false,
   page: 1,
   perPage: DEFAULT_PER_PAGE
@@ -155,6 +156,10 @@ function buildFilterParams(): FetchPurchasesParams {
     params.includeLines = true;
   }
 
+  if (filters.labelIds.length > 0) {
+    params.labelIds = filters.labelIds;
+  }
+
   params.perPage = filters.perPage;
   params.page = filters.page;
 
@@ -173,6 +178,7 @@ async function fetchAggregates() {
     if (filters.dateFrom) baseParams.dateFrom = filters.dateFrom;
     if (filters.dateTo) baseParams.dateTo = filters.dateTo;
     if (filters.status !== 'all') baseParams.status = filters.status;
+    if (filters.labelIds.length > 0) baseParams.labelIds = filters.labelIds;
     baseParams.perPage = 100; // Max allowed per request
     baseParams.includeLines = 1; // Need lines to calculate discounts
 
@@ -264,7 +270,7 @@ async function handlePerPageChange(newPerPage: number) {
 }
 
 const hasActiveFilters = computed(() => {
-  return Boolean(filters.shopId || filters.dateFrom || filters.dateTo || filters.includeLines || filters.status !== 'all');
+  return Boolean(filters.shopId || filters.dateFrom || filters.dateTo || filters.includeLines || filters.status !== 'all' || filters.labelIds.length > 0);
 });
 
 async function handleApplyFilters() {
@@ -281,6 +287,7 @@ async function handleResetFilters() {
   filters.dateFrom = null;
   filters.dateTo = null;
   filters.status = 'all';
+  filters.labelIds = [];
   filters.includeLines = false;
   filters.page = 1;
   filters.perPage = DEFAULT_PER_PAGE;
@@ -394,6 +401,31 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
         variant: 'subtle'
       }, () => row.original.status);
     }
+  },
+  {
+    accessorKey: 'labels',
+    header: 'Labels',
+    cell: ({ row }: { row: { original: { _original: Purchase } } }) => {
+      const labels = row.original._original.labels;
+      if (!labels || labels.length === 0) {
+        return h('span', { class: 'text-muted text-xs' }, '—');
+      }
+      return h('div', { class: 'flex flex-wrap gap-1' },
+        labels.slice(0, 3).map((label: Label) =>
+          h(UBadge, {
+            key: label.id,
+            color: 'neutral',
+            variant: 'subtle',
+            class: 'text-xs'
+          }, () => label.name)
+        ).concat(
+          labels.length > 3
+            ? [h('span', { class: 'text-xs text-muted' }, `+${labels.length - 3}`)]
+            : []
+        )
+      );
+    },
+    enableSorting: false
   },
   {
     id: 'actions',
@@ -544,6 +576,12 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
               :items="statusOptions"
               value-key="value"
               class="min-w-[160px]"
+            />
+            <PurchasesLabelSelect
+              v-model="filters.labelIds"
+              hide-create-button
+              placeholder="Filter by labels..."
+              class="min-w-[200px]"
             />
             <USwitch
               v-model="filters.includeLines"

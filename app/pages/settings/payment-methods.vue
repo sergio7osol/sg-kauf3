@@ -223,7 +223,7 @@ async function confirmDelete() {
     >
       <UButton
         label="Add payment method"
-        color="neutral"
+        color="primary"
         icon="i-lucide-plus"
         class="w-fit lg:ms-auto"
         @click="openCreateModal"

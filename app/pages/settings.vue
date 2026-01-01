@@ -15,6 +15,10 @@ const links = [[{
   icon: 'i-lucide-credit-card',
   to: '/settings/payment-methods'
 }, {
+  label: 'Labels',
+  icon: 'i-lucide-tag',
+  to: '/settings/labels'
+}, {
   label: 'Members',
   icon: 'i-lucide-users',
   to: '/settings/members'
