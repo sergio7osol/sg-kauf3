@@ -6,12 +6,17 @@ import type { Label } from '~/types';
 interface LabelOption {
   label: string
   value: number
-  description?: string | null
+  description?: string
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: number[]
-}>();
+  hideCreateButton?: boolean
+  placeholder?: string
+}>(), {
+  hideCreateButton: false,
+  placeholder: 'Select labels...'
+});
 
 const emit = defineEmits<{
   'update:modelValue': [value: number[]]
@@ -24,13 +29,13 @@ const createModalOpen = ref(false);
 const isCreating = ref(false);
 const newLabelName = ref('');
 const newLabelDescription = ref('');
-const validationError = ref<string | null>(null);
+const validationError = ref<string | undefined>(undefined);
 
 const labelOptions = computed<LabelOption[]>(() => {
   return labels.value.map((l: Label) => ({
     label: l.name,
     value: l.id,
-    description: l.description
+    description: l.description ?? undefined
   }));
 });
 
@@ -52,12 +57,12 @@ onMounted(async () => {
 function openCreateModal() {
   newLabelName.value = '';
   newLabelDescription.value = '';
-  validationError.value = null;
+  validationError.value = undefined;
   createModalOpen.value = true;
 }
 
 async function handleCreateLabel() {
-  validationError.value = null;
+  validationError.value = undefined;
 
   const name = newLabelName.value.trim();
   if (!name) {
@@ -123,7 +128,7 @@ async function handleCreateLabel() {
             v-if="selectedLabelObjects.length === 0"
             class="text-muted"
           >
-            Select labels...
+            {{ placeholder }}
           </span>
           <template v-else>
             <UBadge
@@ -146,6 +151,7 @@ async function handleCreateLabel() {
     </USelectMenu>
 
     <UButton
+      v-if="!hideCreateButton"
       color="neutral"
       variant="ghost"
       icon="i-lucide-plus"
