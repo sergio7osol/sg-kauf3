@@ -23,7 +23,7 @@ const filteredMembers = computed(() => {
     >
       <UButton
         label="Invite people"
-        color="neutral"
+        color="primary"
         class="w-fit lg:ms-auto"
       />
     </UPageCard>

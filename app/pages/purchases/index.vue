@@ -4,7 +4,7 @@ import axios from 'axios';
 import type { TableColumn } from '@nuxt/ui';
 import { usePurchases, type FetchPurchasesParams } from '~/composables/usePurchases';
 import { useShops } from '~/composables/useShops';
-import type { Purchase, PurchaseStatus, Shop, PurchaseLine } from '~/types';
+import type { Purchase, PurchaseStatus, Shop, PurchaseLine, Label } from '~/types';
 
 definePageMeta({
   middleware: ['auth']
@@ -394,6 +394,31 @@ const tableColumns: TableColumn<PurchaseTableRow>[] = [
         variant: 'subtle'
       }, () => row.original.status);
     }
+  },
+  {
+    accessorKey: 'labels',
+    header: 'Labels',
+    cell: ({ row }: { row: { original: { _original: Purchase } } }) => {
+      const labels = row.original._original.labels;
+      if (!labels || labels.length === 0) {
+        return h('span', { class: 'text-muted text-xs' }, '—');
+      }
+      return h('div', { class: 'flex flex-wrap gap-1' },
+        labels.slice(0, 3).map((label: Label) =>
+          h(UBadge, {
+            key: label.id,
+            color: 'neutral',
+            variant: 'subtle',
+            class: 'text-xs'
+          }, () => label.name)
+        ).concat(
+          labels.length > 3
+            ? [h('span', { class: 'text-xs text-muted' }, `+${labels.length - 3}`)]
+            : []
+        )
+      );
+    },
+    enableSorting: false
   },
   {
     id: 'actions',

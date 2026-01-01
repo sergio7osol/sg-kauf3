@@ -97,6 +97,14 @@ export interface Shop {
 
 export type PurchaseStatus = 'draft' | 'confirmed' | 'cancelled';
 
+export interface Label {
+  id: number
+  userId: number
+  name: string
+  description?: string | null
+  createdAt: string
+}
+
 export interface UserPaymentMethod {
   id: number
   userId: number
@@ -156,6 +164,7 @@ export interface Purchase {
   userPaymentMethod?: UserPaymentMethod
   lines?: PurchaseLine[]
   attachments: PurchaseAttachment[]
+  labels?: Label[]
 }
 
 export interface CreatePurchasePayload {
@@ -168,6 +177,7 @@ export interface CreatePurchasePayload {
   status?: PurchaseStatus
   notes?: string | null
   receiptNumber?: string | null
+  labelIds?: number[]
   lines: Array<{
     lineNumber?: number
     productId?: number | null

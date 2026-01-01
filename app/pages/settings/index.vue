@@ -64,7 +64,7 @@ function onFileClick() {
       <UButton
         form="settings"
         label="Save changes"
-        color="neutral"
+        color="primary"
         type="submit"
         class="w-fit lg:ms-auto"
       />
@@ -126,7 +126,7 @@ function onFileClick() {
           />
           <UButton
             label="Choose"
-            color="neutral"
+            color="primary"
             @click="onFileClick"
           />
           <input

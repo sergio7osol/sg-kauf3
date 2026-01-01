@@ -421,6 +421,25 @@ async function handleDelete() {
                       >Not specified</span>
                     </dd>
                   </div>
+                  <div
+                    v-if="purchase.labels && purchase.labels.length > 0"
+                    class="flex justify-between items-start"
+                  >
+                    <dt class="text-sm text-muted">
+                      Labels
+                    </dt>
+                    <dd class="flex flex-wrap gap-1 justify-end">
+                      <UBadge
+                        v-for="label in purchase.labels"
+                        :key="label.id"
+                        color="neutral"
+                        variant="subtle"
+                        size="md"
+                      >
+                        {{ label.name }}
+                      </UBadge>
+                    </dd>
+                  </div>
                 </dl>
               </div>
 

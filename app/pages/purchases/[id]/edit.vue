@@ -58,6 +58,7 @@ const purchaseDate = ref('');
 const purchaseTime = ref<string | null>(null);
 const currency = ref('EUR');
 const status = ref<PurchaseStatus>('confirmed');
+const selectedLabelIds = ref<number[]>([]);
 const notes = ref('');
 const receiptNumber = ref('');
 
@@ -253,6 +254,11 @@ onMounted(async () => {
       notes.value = purchase.value.notes || '';
       receiptNumber.value = purchase.value.receiptNumber || '';
 
+      // Populate labels
+      if (purchase.value.labels) {
+        selectedLabelIds.value = purchase.value.labels.map(l => l.id);
+      }
+
       // Populate line items
       if (purchase.value.lines) {
         lines.value = purchase.value.lines.map(createLineFromData);
@@ -345,7 +351,8 @@ async function handleSubmit() {
       currency: currency.value,
       status: status.value,
       notes: notes.value || null,
-      receiptNumber: receiptNumber.value || null
+      receiptNumber: receiptNumber.value || null,
+      labelIds: selectedLabelIds.value.length > 0 ? selectedLabelIds.value : undefined
     };
 
     // Only include lines if user modified them (full update mode)
@@ -432,7 +439,7 @@ function handleCancel() {
               variant="outline"
               icon="i-lucide-x"
               label="Cancel"
-              class="btn-standatd"
+              class="btn-standard"
               @click="handleCancel"
             />
             <UButton
@@ -441,7 +448,7 @@ function handleCancel() {
               label="Save Changes"
               :loading="isSubmitting"
               :disabled="!isFormValid"
-              class="btn-standatd"
+              class="btn-standard"
               @click="handleSubmit"
             />
           </div>
@@ -570,6 +577,11 @@ function handleCancel() {
                 value-key="value"
                 class="w-full"
               />
+            </UFormField>
+
+            <!-- Labels -->
+            <UFormField label="Labels">
+              <PurchasesLabelSelect v-model="selectedLabelIds" />
             </UFormField>
 
             <!-- Receipt Number -->
