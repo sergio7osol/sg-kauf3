@@ -4,7 +4,7 @@ import axios from 'axios';
 import type { TableColumn } from '@nuxt/ui';
 import { usePurchases, type FetchPurchasesParams } from '~/composables/usePurchases';
 import { useShops } from '~/composables/useShops';
-import type { Purchase, PurchaseStatus, Shop, PurchaseLine, Label } from '~/types';
+import type { Purchase, PurchaseStatus, Shop, PurchaseLine, Label, Range } from '~/types';
 
 definePageMeta({
   middleware: ['auth']
@@ -97,8 +97,7 @@ const perPageOptions = [
 
 const filters = reactive({
   shopId: null as number | null,
-  dateFrom: null as string | null,
-  dateTo: null as string | null,
+  dateRange: null as Range | null,
   status: 'all' as PurchaseStatus | 'all',
   labelIds: [] as number[],
   includeLines: false,
@@ -122,6 +121,8 @@ const shopOptions = computed(() => {
   return [...base, ...dynamic];
 });
 
+const isInitialLoad = ref(true);
+
 onMounted(async () => {
   // Load shops for filter dropdown
   await fetchShops({ includeAddresses: 0 }).catch(err => console.error('Failed to load shops for filters', err));
@@ -131,6 +132,9 @@ onMounted(async () => {
     fetchPurchases({ perPage: filters.perPage, page: filters.page }).catch(err => console.error('Failed to load purchases on mount', err)),
     fetchAggregates()
   ]);
+
+  // Mark initial load complete so watch can start applying filters
+  isInitialLoad.value = false;
 });
 
 function buildFilterParams(): FetchPurchasesParams {
@@ -140,12 +144,12 @@ function buildFilterParams(): FetchPurchasesParams {
     params.shopId = filters.shopId;
   }
 
-  if (filters.dateFrom) {
-    params.dateFrom = filters.dateFrom;
+  if (filters.dateRange?.start) {
+    params.dateFrom = filters.dateRange.start.toISOString().split('T')[0];
   }
 
-  if (filters.dateTo) {
-    params.dateTo = filters.dateTo;
+  if (filters.dateRange?.end) {
+    params.dateTo = filters.dateRange.end.toISOString().split('T')[0];
   }
 
   if (filters.status !== 'all') {
@@ -175,8 +179,8 @@ async function fetchAggregates() {
     // Build base params (include lines for discount calculation)
     const baseParams: Record<string, unknown> = {};
     if (filters.shopId) baseParams.shopId = filters.shopId;
-    if (filters.dateFrom) baseParams.dateFrom = filters.dateFrom;
-    if (filters.dateTo) baseParams.dateTo = filters.dateTo;
+    if (filters.dateRange?.start) baseParams.dateFrom = filters.dateRange.start.toISOString().split('T')[0];
+    if (filters.dateRange?.end) baseParams.dateTo = filters.dateRange.end.toISOString().split('T')[0];
     if (filters.status !== 'all') baseParams.status = filters.status;
     if (filters.labelIds.length > 0) baseParams.labelIds = filters.labelIds;
     baseParams.perPage = 100; // Max allowed per request
@@ -270,11 +274,11 @@ async function handlePerPageChange(newPerPage: number) {
 }
 
 const hasActiveFilters = computed(() => {
-  return Boolean(filters.shopId || filters.dateFrom || filters.dateTo || filters.includeLines || filters.status !== 'all' || filters.labelIds.length > 0);
+  return Boolean(filters.shopId || filters.dateRange?.start || filters.dateRange?.end || filters.includeLines || filters.status !== 'all' || filters.labelIds.length > 0);
 });
 
-async function handleApplyFilters() {
-  filters.page = 1; // Reset to first page when applying filters
+async function applyFilters() {
+  filters.page = 1;
   const params = buildFilterParams();
   await Promise.all([
     fetchPurchases(params).catch(err => console.error('Failed to apply filters:', err)),
@@ -282,19 +286,32 @@ async function handleApplyFilters() {
   ]);
 }
 
-async function handleResetFilters() {
+// Watch filters and auto-apply on change (skip initial load)
+watch(
+  () => ({
+    shopId: filters.shopId,
+    dateRange: filters.dateRange,
+    status: filters.status,
+    labelIds: [...filters.labelIds],
+    includeLines: filters.includeLines
+  }),
+  () => {
+    if (!isInitialLoad.value) {
+      applyFilters();
+    }
+  },
+  { deep: true }
+);
+
+function handleResetFilters() {
   filters.shopId = null;
-  filters.dateFrom = null;
-  filters.dateTo = null;
+  filters.dateRange = null;
   filters.status = 'all';
   filters.labelIds = [];
   filters.includeLines = false;
   filters.page = 1;
   filters.perPage = DEFAULT_PER_PAGE;
-  await Promise.all([
-    fetchPurchases({ perPage: filters.perPage, page: filters.page }),
-    fetchAggregates()
-  ]);
+  // Watch will auto-trigger applyFilters
 }
 
 // Table configuration
@@ -559,18 +576,7 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
               placeholder="Select shop"
               class="min-w-[220px]"
             />
-            <UInput
-              v-model="filters.dateFrom"
-              type="date"
-              placeholder="Date from"
-              class="min-w-[150px]"
-            />
-            <UInput
-              v-model="filters.dateTo"
-              type="date"
-              placeholder="Date to"
-              class="min-w-[150px]"
-            />
+            <DateRangePicker v-model="filters.dateRange" />
             <USelectMenu
               v-model="filters.status"
               :items="statusOptions"
@@ -591,20 +597,11 @@ const tableRows = computed<PurchaseTableRow[]>(() => {
 
           <template #right>
             <UButton
-              color="primary"
-              icon="i-lucide-filter"
-              :disabled="isLoading"
-              :loading="isLoading"
-              label="Apply filters"
-              class="btn-standard"
-              @click="handleApplyFilters"
-            />
-            <UButton
               v-if="hasActiveFilters"
               color="neutral"
               variant="ghost"
               icon="i-lucide-rotate-ccw"
-              label="Reset"
+              label="Reset filters"
               class="btn-standard"
               @click="handleResetFilters"
             />
